@@ -93,21 +93,24 @@ public sealed class UebersichtPage : Page
 
     private void Anordnen()
     {
-        int w = Math.Max(Ui.S(900), _scroll.ClientSize.Width - Ui.S(4));
+        int w = Math.Max(Ui.S(560), _scroll.ClientSize.Width - Ui.S(4));
         int gap = Ui.S(16), y = 0;
+        bool schmal = w < Ui.S(1040);
         _hero.Bounds = new Rectangle(0, y, w, Ui.S(140));
         y = _hero.Bottom + gap;
-        int rechtsW = Math.Max(Ui.S(320), w * 30 / 100), linksW = w - rechtsW - gap;
+        int rechtsW = schmal ? w : Math.Max(Ui.S(320), w * 30 / 100), linksW = schmal ? w : w - rechtsW - gap;
+        int rx = schmal ? 0 : linksW + gap;
         _stand.Bounds = new Rectangle(0, y, linksW, Ui.S(240));
-        _erstattung.Bounds = new Rectangle(linksW + gap, y, rechtsW, Ui.S(240));
+        if (schmal) y = _stand.Bottom + gap;
+        _erstattung.Bounds = new Rectangle(rx, y, rechtsW, Ui.S(240));
         _liste.Bounds = new Rectangle(_ring.Right + Ui.S(28), Ui.S(52), linksW - _ring.Right - Ui.S(48), Ui.S(150));
         _balken.Bounds = new Rectangle(Ui.S(20), Ui.S(212), linksW - Ui.S(180), Ui.S(8));
         _standText.Location = new Point(_balken.Right + Ui.S(12), Ui.S(206));
         _erstInfo.Location = new Point(Ui.S(20), _erstBetrag.Bottom + Ui.S(4));
         _details.Width = rechtsW - Ui.S(40);
         _details.Location = new Point(Ui.S(20), Ui.S(240) - _details.Height - Ui.S(18));
-        y = _stand.Bottom + gap;
-        int spalten = 3, kw = (linksW - Ui.S(40) - (spalten - 1) * Ui.S(10)) / spalten, kh = Ui.S(74);
+        y = _erstattung.Bottom + gap;
+        int spalten = linksW < Ui.S(760) ? 2 : 3, kw = (linksW - Ui.S(40) - (spalten - 1) * Ui.S(10)) / spalten, kh = Ui.S(74);
         for (int i = 0; i < _kacheln.Count; i++)
             _kacheln[i].Bounds = new Rectangle(Ui.S(20) + i % spalten * (kw + Ui.S(10)), Ui.S(52) + i / spalten * (kh + Ui.S(10)), kw, kh);
         int bh = Ui.S(52) + (_kacheln.Count + spalten - 1) / spalten * (kh + Ui.S(10)) + Ui.S(10);
@@ -115,10 +118,11 @@ public sealed class UebersichtPage : Page
         _tippText.MaximumSize = new Size(rechtsW - Ui.S(70), 0);
         _naechster.Location = new Point(Ui.S(52), _tippText.Bottom + Ui.S(12));
         int th = Math.Max(Ui.S(150), _naechster.Bottom + Ui.S(18));
-        _tipps.Bounds = new Rectangle(linksW + gap, y, rechtsW, th);
+        if (schmal) y = _bereiche.Bottom + gap;
+        _tipps.Bounds = new Rectangle(rx, y, rechtsW, th);
         _belegListe.Bounds = new Rectangle(Ui.S(20), Ui.S(50), rechtsW - Ui.S(40), Ui.S(30) * Math.Max(1, _belegListe.Controls.Count));
         _drop.Bounds = new Rectangle(Ui.S(20), _belegListe.Bottom + Ui.S(10), rechtsW - Ui.S(40), Ui.S(60));
-        _belege.Bounds = new Rectangle(linksW + gap, _tipps.Bottom + gap, rechtsW, Math.Max(bh - th - gap, _drop.Bottom + Ui.S(18)));
+        _belege.Bounds = new Rectangle(rx, _tipps.Bottom + gap, rechtsW, Math.Max(bh - th - gap, _drop.Bottom + Ui.S(18)));
     }
 
     public override void Aktualisieren()

@@ -150,7 +150,7 @@ public sealed class MainForm : Form
 
     private void BuildNav()
     {
-        _nav.Width = Ui.S(232);
+        _nav.Width = Ui.S(258);
         _nav.AutoScroll = true;
         _nav.Padding = new Padding(Ui.S(12), Ui.S(14), Ui.S(12), Ui.S(12));
         var logoIcon = Symbol.Make(Glyph.Chart, 18f, Color.FromArgb(56, 189, 248));
@@ -158,7 +158,7 @@ public sealed class MainForm : Form
         _nav.Controls.AddRange([logoIcon, logo]);
         foreach (var (b, _) in _pages) _nav.Controls.Add(b);
         _nav.Controls.Add(_version);
-        var update = new FlatButton("Nach Updates suchen") { Width = Ui.S(208) };
+        var update = new FlatButton("Nach Updates suchen") { Width = Ui.S(232) };
         update.Click += (_, _) => OpenUpdate();
         _nav.Controls.Add(update);
         _version.Text = $"Version {Updater.CurrentVersion.ToString(3)}\nOhne Gewähr – keine Steuerberatung";

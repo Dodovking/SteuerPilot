@@ -216,8 +216,8 @@ public sealed class HeroPanel : Panel
         g.ResetClip();
         using (var pen = new Pen(Theme.P.Border)) g.DrawPath(pen, path);
         var tc = dark ? Color.White : Theme.P.Text;
-        TextRenderer.DrawText(g, Titel, Ui.Hero, new Point(Ui.S(28), Height / 2 - Ui.S(40)), tc);
-        TextRenderer.DrawText(g, Untertitel, Ui.Font(12f), new Point(Ui.S(30), Height / 2 + Ui.S(8)), dark ? Color.FromArgb(200, 214, 240) : Theme.P.Muted);
+        TextRenderer.DrawText(g, Titel, Ui.Hero, new Point(Ui.S(28), Height / 2 - Ui.S(40)), tc, TextFormatFlags.NoPrefix);
+        TextRenderer.DrawText(g, Untertitel, Ui.Font(12f), new Point(Ui.S(30), Height / 2 + Ui.S(8)), dark ? Color.FromArgb(200, 214, 240) : Theme.P.Muted, TextFormatFlags.NoPrefix);
     }
 
     private static void ZeichneGebaeude(Graphics g, Rectangle r, bool dark)
@@ -297,7 +297,8 @@ public sealed class BereichKachel : Card
         var tc = _hervor ? Color.White : p.Text;
         var mc = _hervor ? Color.FromArgb(220, 232, 255) : p.Muted;
         int x = Ui.S(70), w = Width - x - Ui.S(34);
-        TextRenderer.DrawText(g, _titel, Ui.Bold, new Rectangle(x, Ui.S(13), w, Ui.S(22)), tc, TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+        var tf = TextRenderer.MeasureText(_titel, Ui.Bold).Width > w ? Ui.Font(8.75f, FontStyle.Bold) : Ui.Bold;
+        TextRenderer.DrawText(g, _titel, tf, new Rectangle(x, Ui.S(13), w, Ui.S(22)), tc, TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
         TextRenderer.DrawText(g, _text, Ui.Small, new Rectangle(x, Ui.S(36), w, Ui.S(34)), mc, TextFormatFlags.WordBreak | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
         using var chev = Ui.Icon(10f);
         TextRenderer.DrawText(g, Haken ? Glyph.Check : Glyph.Chevron, chev, new Rectangle(Width - Ui.S(32), 0, Ui.S(24), Height),
@@ -317,7 +318,7 @@ public sealed class NavButton : Control
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.Selectable, true);
         Glyph = glyph;
         Text = text;
-        Size = new Size(Ui.S(208), Ui.S(34));
+        Size = new Size(Ui.S(232), Ui.S(34));
         Cursor = Cursors.Hand;
         TabStop = true;
     }
@@ -356,7 +357,9 @@ public sealed class NavButton : Control
         var c = Ausgewaehlt ? Color.White : p.Text;
         using var icon = Ui.Icon(12f);
         TextRenderer.DrawText(g, Glyph, icon, new Rectangle(Ui.S(8), 0, Ui.S(28), Height), Ausgewaehlt ? Color.White : p.Muted, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-        TextRenderer.DrawText(g, Text, Ausgewaehlt ? Ui.Bold : Ui.Nav, new Rectangle(Ui.S(42), 0, Width - Ui.S(46), Height), c,
+        var nf = Ausgewaehlt ? Ui.Bold : Ui.Nav;
+        if (TextRenderer.MeasureText(Text, nf).Width > Width - Ui.S(48)) nf = Ui.Font(8.75f, Ausgewaehlt ? FontStyle.Bold : FontStyle.Regular);
+        TextRenderer.DrawText(g, Text, nf, new Rectangle(Ui.S(42), 0, Width - Ui.S(46), Height), c,
             TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
     }
 }

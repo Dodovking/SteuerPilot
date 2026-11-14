@@ -97,6 +97,7 @@ public static class Theme
                 StyleGrid(g);
                 break;
             case IThemed:
+                if (c is Card) c.BackColor = P.Surface;
                 c.Invalidate();
                 break;
             case Label l:
