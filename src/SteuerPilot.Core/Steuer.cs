@@ -172,6 +172,22 @@ public static class Steuer
 
     public static decimal Brutto(decimal netto, decimal satz) => Cent(netto * (1 + satz / 100m));
 
+    /// <summary>Besteuerungsanteil der Rente nach Jahr des Rentenbeginns (§ 22 EStG, ab 2023 +0,5 % je Jahr).</summary>
+    public static decimal Besteuerungsanteil(int beginn) => beginn <= 2005 ? 50m
+        : beginn <= 2020 ? 50m + 2m * (beginn - 2005)
+        : beginn <= 2022 ? 80m + (beginn - 2020)
+        : Math.Min(100m, 82m + 0.5m * (beginn - 2022));
+
+    public const decimal WerbungskostenPauschbetragRente = 102m;
+
+    /// <summary>Abgeltungsteuer 25 % inkl. Soli und ggf. Kirchensteuer (die KiSt mindert die KapESt).</summary>
+    public static (decimal Kapest, decimal Soli, decimal Kist) Abgeltungsteuer(decimal betrag, decimal kistSatz)
+    {
+        if (betrag <= 0) return (0, 0, 0);
+        var kapest = Cent(betrag / (4m + kistSatz / 100m));
+        return (kapest, Cent(kapest * 0.055m), Cent(kapest * kistSatz / 100m));
+    }
+
     public static decimal Cent(decimal v) => decimal.Round(v, 2, MidpointRounding.AwayFromZero);
 
     public static decimal VorsorgeHoechstbetrag(bool selbstzahler) => selbstzahler ? 2800m : 1900m;

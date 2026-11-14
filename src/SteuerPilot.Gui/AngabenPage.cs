@@ -88,17 +88,50 @@ public sealed class AngabenPage : Page
         _f.Zeile("Kinder (mit Kindergeld)", Ganz(pr.Kinder, 15, v => pr.Kinder = v));
         if (!pr.Splitting) _f.Zeile("Alleinerziehend", "Entlastungsbetrag 4.260 € + 240 € je weiteres Kind", Haken("ja", pr.Alleinerziehend, v => pr.Alleinerziehend = v));
 
-        var a = d.Angaben(App.Jahr);
-        _f.Ueberschrift($"Lohnsteuerbescheinigung {App.Jahr}");
-        _f.Hinweis("Die Werte stehen auf der Lohnsteuerbescheinigung (bekommst du im Februar vom Arbeitgeber, auch in ELSTER abrufbar). Nummern = Zeile auf der Bescheinigung.");
-        var personen = pr.Splitting ? new[] { (pr.PersonName(Person.Ich), a.Ich), (pr.PersonName(Person.Partner), a.Partner) } : [(pr.PersonName(Person.Ich), a.Ich)];
-        if (pr.Splitting)
+        void NeuAufbauen() { _save.Stop(); App.Speichern(); _geladen = default; BeginInvoke(Aktualisieren); }
+        if (d.Jahre.Values.Any(j => j.Ich.Rente > 0 || j.Partner.Rente > 0)) pr.HatRente = true;
+        if (pr.Mietobjekte.Count > 0) pr.HatVermietung = true;
+        if (pr.Geldanlagen.Count > 0 || d.Belege.Any(b => b.Kat.Gruppe == Gruppe.Kapital)) pr.HatKapital = true;
+        CheckBox Art(string text, bool wert, Action<bool> setzen)
         {
-            var k1 = Make.Label(personen[0].Item1, Ui.Bold, width: Ui.S(130));
-            var k2 = Make.Label(personen[1].Item1, Ui.Bold, width: Ui.S(130));
-            _f.Zeile("", k1, k2);
+            var c = Felder.Haken(text, wert);
+            c.AutoSize = false;
+            c.Size = new Size(Ui.S(230), Ui.S(28));
+            c.CheckedChanged += (_, _) => { setzen(c.Checked); NeuAufbauen(); };
+            return c;
+        }
+        _f.Ueberschrift("Was trifft auf dich zu?");
+        _f.Hinweis("Nur angehakte Bereiche werden unten angezeigt – so bleibt es übersichtlich.");
+        _f.Zeile("Ich bekomme", Art("Rente", pr.HatRente, v => pr.HatRente = v), Art("Lohn / Gehalt", pr.HatLohn, v => pr.HatLohn = v));
+        _f.Zeile("", Art("Mieteinnahmen", pr.HatVermietung, v => pr.HatVermietung = v), Art("Zinsen, Aktien, ETFs", pr.HatKapital, v => pr.HatKapital = v));
+
+        var a = d.Angaben(App.Jahr);
+        var personen = pr.Splitting ? new[] { (pr.PersonName(Person.Ich), a.Ich), (pr.PersonName(Person.Partner), a.Partner) } : [(pr.PersonName(Person.Ich), a.Ich)];
+        void Kopf()
+        {
+            if (!pr.Splitting) return;
+            _f.Zeile("", Make.Label(personen[0].Item1, Ui.Bold, width: Ui.S(130)), Make.Label(personen[1].Item1, Ui.Bold, width: Ui.S(130)));
         }
         void Feld(string label, string hinweis, Func<PersonAngaben, Control> make) => _f.Zeile(label, hinweis, personen.Select(p => make(p.Item2)).ToArray());
+
+        if (pr.HatRente)
+        {
+            _f.Ueberschrift($"Rente {App.Jahr}");
+            _f.Hinweis("Die Werte stehen in der Rentenbezugsmitteilung („Information über die Meldung an die Finanzverwaltung“, bei der Rentenversicherung kostenlos anforderbar). Legst du sie in den Eingang, übernimmt SteuerPilot die Werte automatisch.");
+            Kopf();
+            Feld("Rente im Jahr (brutto) €", "Jahresbetrag vor Abzug der Krankenkasse", p => Geld(p.Rente, v => p.Rente = v));
+            Feld("Rentenbeginn (Jahr)", "bestimmt den steuerpflichtigen Anteil", p => Ganz(p.Rentenbeginn, 2100, v => p.Rentenbeginn = v));
+            Feld("Krankenversicherung der Rentner €", "eigener Anteil im Jahr", p => Geld(p.RentnerKv, v => p.RentnerKv = v));
+            Feld("Pflegeversicherung der Rentner €", "", p => Geld(p.RentnerPv, v => p.RentnerPv = v));
+            var beginn = a.Ich.Rentenbeginn > 0 ? a.Ich.Rentenbeginn : App.Jahr;
+            _f.Hinweis($"Steuerpflichtig ist ein fester Prozentsatz – bei Rentenbeginn {beginn}: {Steuer.Besteuerungsanteil(beginn):0.#} %. Den Rest rechnet die Steuer-Schätzung.");
+        }
+
+        if (pr.HatLohn)
+        {
+        _f.Ueberschrift($"Lohnsteuerbescheinigung {App.Jahr}");
+        _f.Hinweis("Die Werte stehen auf der Lohnsteuerbescheinigung (bekommst du im Februar vom Arbeitgeber, auch in ELSTER abrufbar). Nummern = Zeile auf der Bescheinigung.");
+        Kopf();
         Feld("Bruttoarbeitslohn (3)", "", p => Geld(p.Bruttolohn, v => p.Bruttolohn = v));
         Feld("Einbehaltene Lohnsteuer (4)", "", p => Geld(p.Lohnsteuer, v => p.Lohnsteuer = v));
         Feld("Solidaritätszuschlag (5)", "", p => Geld(p.Soli, v => p.Soli = v));
@@ -115,9 +148,12 @@ public sealed class AngabenPage : Page
         Feld("Mit eigenem Auto", "ohne Auto max. 4.500 €", p => Haken("ja", p.MitEigenemAuto, v => p.MitEigenemAuto = v));
         Feld("Homeoffice-Tage", "6 € pro Tag, max. 210 Tage", p => Ganz(p.HomeofficeTage, 366, v => p.HomeofficeTage = v));
 
+        }
+
+        if (pr.HatVermietung)
+        {
         _f.Ueberschrift("Vermietete Immobilien (Anlage V)");
         _f.Hinweis("Für jede vermietete Wohnung bzw. jedes Haus ein Objekt anlegen. Mieten und Kosten erfasst du als Belege der Gruppe „Vermietung“ und wählst dort das Objekt aus. Die Gebäude-AfA rechnet SteuerPilot automatisch.");
-        void NeuAufbauen() { _save.Stop(); App.Speichern(); _geladen = default; BeginInvoke(Aktualisieren); }
         foreach (var o in pr.Mietobjekte.ToList())
         {
             var on = Felder.Text(270, o.Name);
@@ -158,6 +194,40 @@ public sealed class AngabenPage : Page
             NeuAufbauen();
         };
         _f.Element(neu);
+        }
+
+        if (pr.HatKapital)
+        {
+            var pausch = pr.SparerPauschbetrag;
+            _f.Ueberschrift("Konten, Aktien & ETFs (Anlage KAP)");
+            _f.Hinweis($"Leg jedes Konto bzw. Depot mit Freistellungsauftrag an. Die Jahressteuerbescheinigungen der Banken legst du einfach in den Eingang – SteuerPilot liest Erträge und einbehaltene Steuer aus und zeigt in der Schätzung, ob du Geld zurückbekommst. Steuerfrei sind {pausch:N0} € im Jahr (Sparer-Pauschbetrag).");
+            foreach (var g in pr.Geldanlagen.ToList())
+            {
+                var gn = Felder.Text(270, g.Name);
+                gn.Box.TextChanged += (_, _) => { g.Name = gn.Text; Geaendert(); };
+                var weg = new FlatButton("Entfernen");
+                weg.Click += (_, _) =>
+                {
+                    if (MessageBox.Show(Main, $"„{g.Name}“ entfernen? Die Belege bleiben erhalten.", "Konto / Depot", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+                    pr.Geldanlagen.Remove(g);
+                    NeuAufbauen();
+                };
+                _f.Zeile("Bank / Konto / Depot", gn, weg);
+                _f.Zeile("Freistellungsauftrag €", Geld(g.Freistellungsauftrag, v => g.Freistellungsauftrag = v));
+                _f.Zeile("Sparplan pro Monat €", "0 = kein Sparplan", Geld(g.SparplanMonat, v => g.SparplanMonat = v));
+            }
+            if (pr.Geldanlagen.Count > 0)
+            {
+                var fsa = pr.Geldanlagen.Sum(g => g.Freistellungsauftrag);
+                var monat = pr.Geldanlagen.Sum(g => g.SparplanMonat);
+                _f.Hinweis($"Freistellungsaufträge zusammen: {fsa:N0} € von {pausch:N0} €" +
+                           (fsa > pausch ? " – zu hoch, bitte bei einer Bank kürzen." : fsa < pausch ? $" – {pausch - fsa:N0} € sind noch frei." : " – passt."));
+                if (monat > 0) _f.Hinweis($"Sparpläne: {monat:N2} € im Monat = {monat * 12:N2} € im Jahr. Steuer fällt erst beim Verkauf an; bei ETFs rechnet die Bank jedes Jahr eine kleine Vorabpauschale ab.");
+            }
+            var neuG = new FlatButton("+ Konto / Depot hinzufügen");
+            neuG.Click += (_, _) => { pr.Geldanlagen.Add(new Geldanlage { Name = $"Bank {pr.Geldanlagen.Count + 1}" }); NeuAufbauen(); };
+            _f.Element(neuG);
+        }
 
         _f.Ueberschrift("Sonstiges");
         _f.Zeile("Geleistete Einkommensteuer-Vorauszahlungen", Geld(a.Vorauszahlungen, v => a.Vorauszahlungen = v));

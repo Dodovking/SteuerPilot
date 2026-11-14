@@ -46,6 +46,9 @@ public sealed class Beleg
     /// <summary>Nur Vermietung: Name des Mietobjekts (siehe Profil.Mietobjekte).</summary>
     public string Objekt { get; set; } = "";
 
+    /// <summary>Nur Steuerbescheinigungen der Bank (Anlage KAP).</summary>
+    public Kapitalwerte? Kapital { get; set; }
+
     public string Notiz { get; set; } = "";
     public DateTime Erstellt { get; set; } = DateTime.Now;
 
@@ -59,12 +62,38 @@ public sealed class Beleg
     {
         var b = (Beleg)MemberwiseClone();
         b.Dateien = [.. Dateien];
+        if (Kapital != null) b.Kapital = Kapital with { };
         return b;
     }
 }
 
+/// <summary>Werte einer Jahressteuer- oder Verlustbescheinigung der Bank.</summary>
+public sealed record Kapitalwerte
+{
+    public decimal Ertraege { get; set; }
+    public decimal AktienGewinne { get; set; }
+    public decimal VerlustAktien { get; set; }
+    public decimal VerlustSonstige { get; set; }
+    public decimal Kapest { get; set; }
+    public decimal Soli { get; set; }
+    public decimal Kist { get; set; }
+    public decimal Pauschbetrag { get; set; }
+
+    [JsonIgnore]
+    public decimal Einbehalten => Kapest + Soli + Kist;
+
+    [JsonIgnore]
+    public bool Leer => Ertraege == 0 && VerlustAktien == 0 && VerlustSonstige == 0 && Einbehalten == 0;
+}
+
 public sealed class PersonAngaben
 {
+    /// <summary>Jahresbetrag der gesetzlichen/privaten Rente (Rentenbezugsmitteilung).</summary>
+    public decimal Rente { get; set; }
+    public int Rentenbeginn { get; set; }
+    public decimal RentnerKv { get; set; }
+    public decimal RentnerPv { get; set; }
+
     public decimal Bruttolohn { get; set; }
     public decimal Lohnsteuer { get; set; }
     public decimal Soli { get; set; }
@@ -103,6 +132,14 @@ public sealed class Mietobjekt
     public decimal Satz => AfaSatz > 0 ? AfaSatz : Steuer.GebaeudeAfaSatz(Baujahr);
 }
 
+/// <summary>Konto oder Depot (mit Freistellungsauftrag und ggf. Sparplan).</summary>
+public sealed class Geldanlage
+{
+    public string Name { get; set; } = "";
+    public decimal Freistellungsauftrag { get; set; }
+    public decimal SparplanMonat { get; set; }
+}
+
 public sealed class Profil
 {
     public string Name { get; set; } = "";
@@ -113,6 +150,15 @@ public sealed class Profil
     public int Kinder { get; set; }
     public bool Alleinerziehend { get; set; }
     public List<Mietobjekt> Mietobjekte { get; set; } = [];
+    public List<Geldanlage> Geldanlagen { get; set; } = [];
+
+    public bool HatLohn { get; set; } = true;
+    public bool HatRente { get; set; }
+    public bool HatVermietung { get; set; }
+    public bool HatKapital { get; set; }
+
+    [JsonIgnore]
+    public decimal SparerPauschbetrag => Splitting ? 2000m : 1000m;
 
     [JsonIgnore]
     public bool Splitting => Veranlagung == Veranlagung.Zusammen;

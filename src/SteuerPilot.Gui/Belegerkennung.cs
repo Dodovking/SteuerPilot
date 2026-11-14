@@ -25,12 +25,36 @@ public static class Belegerkennung
 
     public static Task<Ergebnis> Erkennen(string pfad) => Cache.GetOrAdd(Key(pfad), _ => Lesen(pfad));
 
+    /// <summary>Werte aus Lohnsteuer- oder Rentenbescheinigung in „Meine Angaben“ übernehmen (nur leere Felder).</summary>
+    public static string? AngabenUebernehmen(App app, Vorschlag v, Beleg b)
+    {
+        if (v.Angaben == null) return null;
+        var jahr = app.Daten.Angaben(b.Jahr);
+        var ziel = b.Person == Person.Partner ? jahr.Partner : jahr.Ich;
+        int n = 0;
+        foreach (var p in typeof(PersonAngaben).GetProperties())
+        {
+            var neu = p.GetValue(v.Angaben);
+            if (neu is decimal d && d != 0 && (decimal)p.GetValue(ziel)! == 0) { p.SetValue(ziel, d); n++; }
+            else if (neu is int i && i != 0 && p.Name == nameof(PersonAngaben.Rentenbeginn) && ziel.Rentenbeginn == 0) { p.SetValue(ziel, i); n++; }
+        }
+        if (v.Angaben.Rente > 0) app.Daten.Profil.HatRente = true;
+        if (v.Angaben.Bruttolohn > 0) app.Daten.Profil.HatLohn = true;
+        return n == 0 ? null : $"{n} Werte aus „{b.Kat.Name}“ in „Meine Angaben {b.Jahr}“ übernommen";
+    }
+
     private static async Task<Ergebnis> Lesen(string pfad)
     {
         await Einzeln.WaitAsync().ConfigureAwait(false);
         try
         {
-            var text = await Ocr.TextAus(pfad).ConfigureAwait(false);
+            var text = Path.GetExtension(pfad).Equals(".pdf", StringComparison.OrdinalIgnoreCase)
+                ? await Task.Run(() => PdfText.Lesen(pfad)).ConfigureAwait(false) : "";
+            if (!PdfText.HatText(text))
+            {
+                try { text = await Ocr.TextAus(pfad).ConfigureAwait(false); }
+                catch when (text.Length > 0) { }
+            }
             return new Ergebnis(text, Erkennung.Auswerten(text), null);
         }
         catch (Exception ex)

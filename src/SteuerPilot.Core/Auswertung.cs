@@ -17,7 +17,8 @@ public sealed class Schaetzung
     public decimal Einkommensteuer { get; init; }
     public decimal Soli { get; init; }
     public decimal Kirchensteuer { get; init; }
-    public decimal Festzusetzen => Einkommensteuer + Soli + Kirchensteuer;
+    public decimal Kapitalsteuer { get; init; }
+    public decimal Festzusetzen => Einkommensteuer + Soli + Kirchensteuer + Kapitalsteuer;
     public decimal BereitsGezahlt { get; init; }
     public decimal Ergebnis => BereitsGezahlt - Festzusetzen;
     public decimal Grenzsteuersatz { get; init; }
@@ -142,11 +143,25 @@ public static class Auswertung
             wkGesamt += wk;
         }
 
+        decimal renten = 0;
+        foreach (var p in personen)
+        {
+            var a = Von(angaben, p);
+            if (a.Rente <= 0) continue;
+            var beginn = a.Rentenbeginn > 0 ? a.Rentenbeginn : jahr;
+            var anteil = Steuer.Besteuerungsanteil(beginn);
+            var stpfl = Math.Max(0, Steuer.Cent(a.Rente * anteil / 100m) - Steuer.WerbungskostenPauschbetragRente);
+            zeilen.Add(new Zeile($"Rente {profil.PersonName(p)} (steuerpflichtig)", stpfl,
+                $"{a.Rente:N2} € × {anteil:0.#} % (Rentenbeginn {beginn}) − 102 € Pauschbetrag"));
+            renten += stpfl;
+        }
+        if (renten > 0) hinweise.Add("Rente: Der steuerfreie Teil wird im Jahr nach Rentenbeginn festgeschrieben – Rentenerhöhungen sind danach voll steuerpflichtig. Die Schätzung rechnet vereinfacht mit dem Prozentsatz.");
+
         var gewinn = Summe(posten, Wirkung.BetriebEinnahme) - Summe(posten, Wirkung.BetriebAusgabe);
         if (posten.Any(p => p.Kat.Gruppe == Gruppe.Selbststaendig)) zeilen.Add(new Zeile("Gewinn Selbstständig/Nebengewerbe", gewinn, "Einnahmen − Ausgaben"));
         var vuv = Vermietung(profil, posten, jahr, zeilen, hinweise);
 
-        var summeEinkuenfte = einkuenfteNs + gewinn + vuv;
+        var summeEinkuenfte = einkuenfteNs + renten + gewinn + vuv;
         decimal gde = summeEinkuenfte;
         if (!split && profil.Alleinerziehend && profil.Kinder > 0)
         {
@@ -161,10 +176,10 @@ public static class Auswertung
         var basisKv = personen.Sum(p =>
         {
             var a = Von(angaben, p);
-            return Steuer.Cent(a.KrankenversicherungAN * (a.KrankengeldAnspruch ? 0.96m : 1m)) + a.PflegeversicherungAN;
+            return Steuer.Cent(a.KrankenversicherungAN * (a.KrankengeldAnspruch ? 0.96m : 1m)) + a.PflegeversicherungAN + a.RentnerKv + a.RentnerPv;
         }) + Summe(posten, Wirkung.KrankenPflegeBasis);
         var sonstigeVorsorge = personen.Sum(p => Von(angaben, p).ArbeitslosenversicherungAN) + Summe(posten, Wirkung.SonstigeVorsorge);
-        var hoechst = personen.Sum(p => Steuer.VorsorgeHoechstbetrag(Von(angaben, p).Bruttolohn <= 0));
+        var hoechst = personen.Sum(p => Steuer.VorsorgeHoechstbetrag(Von(angaben, p).Bruttolohn <= 0 && Von(angaben, p).Rente <= 0));
         var weitereVorsorge = Math.Max(basisKv, Math.Min(basisKv + sonstigeVorsorge, hoechst));
         var vorsorge = altersvorsorge + weitereVorsorge;
         if (altersvorsorge > 0) zeilen.Add(new Zeile("Altersvorsorge (Rente)", -altersvorsorge));
@@ -216,13 +231,14 @@ public static class Auswertung
         var kirche = profil.Kirchensteuer ? Steuer.Kirchensteuer(estFest, profil.KirchensteuerSatz) : 0;
         if (soli > 0) zeilen.Add(new Zeile("Solidaritätszuschlag", soli));
         if (kirche > 0) zeilen.Add(new Zeile($"Kirchensteuer ({profil.KirchensteuerSatz:0} %)", kirche));
-        zeilen.Add(new Zeile("Steuer laut Schätzung", estFest + soli + kirche, "", true));
+        var kap = Kapital(profil, posten, zve, jahr, zeilen, hinweise);
+        zeilen.Add(new Zeile("Steuer laut Schätzung", estFest + soli + kirche + kap.Steuer, "", true));
 
-        var gezahlt = personen.Sum(p => { var a = Von(angaben, p); return a.Lohnsteuer + a.Soli + a.Kirchensteuer; }) + angaben.Vorauszahlungen;
+        var gezahlt = personen.Sum(p => { var a = Von(angaben, p); return a.Lohnsteuer + a.Soli + a.Kirchensteuer; }) + angaben.Vorauszahlungen + kap.Einbehalten;
         zeilen.Add(new Zeile("Bereits gezahlt (Lohnsteuer, Soli, KiSt, Vorauszahlungen)", gezahlt, "", true));
 
-        if (personen.All(p => Von(angaben, p).Bruttolohn <= 0) && gewinn == 0 && vuv == 0)
-            hinweise.Insert(0, "Trag zuerst die Werte deiner Lohnsteuerbescheinigung ein, sonst ist die Schätzung nicht aussagekräftig.");
+        if (personen.All(p => Von(angaben, p).Bruttolohn <= 0 && Von(angaben, p).Rente <= 0) && gewinn == 0 && vuv == 0)
+            hinweise.Insert(0, "Trag zuerst unter „Meine Angaben“ deine Rente bzw. die Werte der Lohnsteuerbescheinigung ein, sonst ist die Schätzung nicht aussagekräftig.");
         foreach (var p in personen)
         {
             var a = Von(angaben, p);
@@ -233,7 +249,6 @@ public static class Auswertung
         if (profil.Kinder > 0) hinweise.Add("Kinderfreibeträge sind nicht eingerechnet – das Finanzamt prüft automatisch, ob Kindergeld oder Freibetrag günstiger ist.");
         if (posten.Any(p => p.Kat.Gruppe == Gruppe.Haushaltsnah && p.Beleg.Arbeitskosten is null or 0))
             hinweise.Add("Bei Handwerker-/Dienstleistungsrechnungen zählen nur die Arbeitskosten – trag sie im Beleg ein, sonst wird der ganze Betrag angesetzt.");
-        if (posten.Any(p => p.Kat.Key == "kapitalertraege")) hinweise.Add("Kapitalerträge sind nicht eingerechnet (Abgeltungsteuer).");
 
         return new Schaetzung
         {
@@ -244,11 +259,45 @@ public static class Auswertung
             Einkommensteuer = estFest,
             Soli = soli,
             Kirchensteuer = kirche,
+            Kapitalsteuer = kap.Steuer,
             BereitsGezahlt = gezahlt,
             Grenzsteuersatz = Steuer.Grenzsteuersatz(zve, jahr, split),
             Werbungskosten = wkGesamt,
             Hinweise = hinweise,
         };
+    }
+
+    public sealed record KapitalErgebnis(decimal Ertraege, decimal Steuerpflichtig, decimal Steuer, decimal Einbehalten, bool Guenstiger);
+
+    /// <summary>Anlage KAP aus den Bankbescheinigungen: Verlustverrechnung zwischen Banken, Sparer-Pauschbetrag, Günstigerprüfung.</summary>
+    public static KapitalErgebnis Kapital(Profil profil, IEnumerable<Posten> posten, decimal zve, int jahr, List<Zeile> zeilen, List<string> hinweise)
+    {
+        var werte = posten.Where(p => p.Kat.Wirkung == Wirkung.Kapital && p.Beleg.Jahr == jahr)
+            .Select(p => p.Beleg.Kapital ?? new Kapitalwerte { Ertraege = p.Beleg.Betrag }).ToList();
+        if (werte.Count == 0) return new(0, 0, 0, 0, false);
+        decimal ertraege = werte.Sum(w => w.Ertraege), aktien = werte.Sum(w => w.AktienGewinne);
+        decimal verlustAktien = Math.Min(werte.Sum(w => w.VerlustAktien), aktien), verlustSonst = werte.Sum(w => w.VerlustSonstige);
+        decimal einbehalten = werte.Sum(w => w.Einbehalten);
+        var netto = ertraege - verlustAktien - verlustSonst;
+        var pausch = Math.Min(Math.Max(0, netto), profil.SparerPauschbetrag);
+        var stpfl = Math.Max(0, netto - pausch);
+        var kistSatz = profil.Kirchensteuer ? profil.KirchensteuerSatz : 0;
+        var (kapest, soli, kist) = Steuer.Abgeltungsteuer(stpfl, kistSatz);
+        decimal steuer = kapest + soli + kist;
+        var tarif = Steuer.Einkommensteuer(zve + stpfl, jahr, profil.Splitting) - Steuer.Einkommensteuer(zve, jahr, profil.Splitting);
+        tarif += Steuer.Cent(tarif * kistSatz / 100m);
+        bool guenstiger = stpfl > 0 && tarif < steuer;
+        if (guenstiger) steuer = tarif;
+
+        zeilen.Add(new Zeile("Kapitalerträge (Anlage KAP)", ertraege, verlustAktien + verlustSonst > 0 ? $"Verluste verrechnet: {verlustAktien + verlustSonst:N2} €" : ""));
+        zeilen.Add(new Zeile("  Sparer-Pauschbetrag", -pausch, $"höchstens {profil.SparerPauschbetrag:N0} €"));
+        zeilen.Add(new Zeile(guenstiger ? "  Steuer auf Kapitalerträge (persönlicher Steuersatz)" : "  Abgeltungsteuer (25 % + Soli" + (kistSatz > 0 ? " + KiSt)" : ")"), steuer));
+        var diff = einbehalten - steuer;
+        if (diff > 1) hinweise.Add($"Kapitalerträge: Die Banken haben rund {diff:N0} € zu viel einbehalten – mit der Anlage KAP bekommst du das zurück" + (guenstiger ? " (Günstigerprüfung ankreuzen, Zeile 4)." : "."));
+        else if (diff < -1) hinweise.Add($"Kapitalerträge: Es wurden rund {-diff:N0} € zu wenig einbehalten (z. B. Freistellungsaufträge über {profil.SparerPauschbetrag:N0} € oder Auslandsbroker) – die Anlage KAP ist dann Pflicht.");
+        var fsa = profil.Geldanlagen.Sum(g => g.Freistellungsauftrag);
+        if (fsa > profil.SparerPauschbetrag) hinweise.Add($"Deine Freistellungsaufträge ({fsa:N0} €) sind höher als erlaubt ({profil.SparerPauschbetrag:N0} €) – bitte bei den Banken anpassen.");
+        return new(ertraege, stpfl, steuer, einbehalten, guenstiger);
     }
 
     private static PersonAngaben Von(Jahresangaben a, Person p) => p == Person.Partner ? a.Partner : a.Ich;

@@ -11,6 +11,7 @@ public enum Gruppe
     Selbststaendig,
     Vermietung,
     Sonstiges,
+    Kapital,
 }
 
 /// <summary>Wie ein Beleg in der Steuerschätzung wirkt.</summary>
@@ -35,6 +36,7 @@ public enum Wirkung
     BetriebAusgabe,
     MietEinnahme,
     MietAusgabe,
+    Kapital,
 }
 
 public sealed record Kategorie(string Key, string Name, Gruppe Gruppe, Wirkung Wirkung, string Formular, string Tipp, string[] Stichworte)
@@ -55,12 +57,23 @@ public static class Kategorien
         // Einnahmen
         new("lohnsteuerbescheinigung", "Lohnsteuerbescheinigung", Gruppe.Einnahmen, Wirkung.Keine, "Anlage N",
             "Die Werte (Bruttolohn, Lohnsteuer, Sozialversicherung) trägst du unter „Steuer-Schätzung“ ein.", ["lohnsteuerbescheinigung", "ausdruck der elektronischen", "bruttoarbeitslohn", "eTIN"]),
-        new("kapitalertraege", "Kapitalerträge / Steuerbescheinigung Bank", Gruppe.Einnahmen, Wirkung.Keine, "Anlage KAP",
-            "Meist mit Abgeltungsteuer erledigt – trotzdem ablegen (Günstigerprüfung, Verluste).", ["kapitalertr", "steuerbescheinigung", "abgeltungsteuer", "depot", "dividende", "zinsen"]),
         new("lohnersatz", "Lohnersatz (ALG, Kranken-, Elterngeld)", Gruppe.Einnahmen, Wirkung.Keine, "Hauptvordruck",
             "Steuerfrei, aber Progressionsvorbehalt – Bescheinigung aufheben.", ["arbeitslosengeld", "krankengeld", "elterngeld", "kurzarbeit", "agentur für arbeit"]),
-        new("rente", "Renten-Bescheinigung", Gruppe.Einnahmen, Wirkung.Keine, "Anlage R", "", ["rentenbezugsmitteilung", "renteninformation", "deutsche rentenversicherung"]),
+        new("rente", "Renten-Bescheinigung", Gruppe.Einnahmen, Wirkung.Keine, "Anlage R",
+            "Rentenbetrag, Rentenbeginn und Kranken-/Pflegeversicherung trägst du unter „Meine Angaben“ ein – beim automatischen Einsortieren übernimmt SteuerPilot sie selbst.", ["rentenbezugsmitteilung", "renteninformation", "deutsche rentenversicherung", "rentenanpassung", "leibrente", "rentenbetrag", "rentenservice"]),
         new("sonstige-einnahmen", "Sonstige Einnahmen", Gruppe.Einnahmen, Wirkung.Keine, "Anlage SO", "", []),
+
+        // Konten, Aktien & ETFs (Anlage KAP)
+        new("kapitalertraege", "Jahressteuerbescheinigung (Bank, Depot)", Gruppe.Kapital, Wirkung.Kapital, "Anlage KAP",
+            "Kommt im Frühjahr von jeder Bank. Wurde zu viel Abgeltungsteuer einbehalten (z. B. Freistellungsauftrag zu klein), gibt es über die Anlage KAP Geld zurück.", ["jahressteuerbescheinigung", "steuerbescheinigung", "kapitalertragsteuer", "kapitalerträge", "sparer-pauschbetrag", "abgeltungsteuer", "dividende"]),
+        new("kap-verlust", "Verlustbescheinigung", Gruppe.Kapital, Wirkung.Kapital, "Anlage KAP",
+            "Verluste einer Bank kannst du mit Gewinnen bei einer anderen Bank verrechnen (Antrag bis 15.12. bei der Bank).", ["verlustbescheinigung", "nicht ausgeglichene verluste"]),
+        new("kap-ausland", "Erträge ohne Steuerabzug (Auslandsbroker)", Gruppe.Kapital, Wirkung.Kapital, "Anlage KAP / KAP-INV",
+            "Erträge von ausländischen Banken/Brokern ohne deutsche Abgeltungsteuer müssen in die Erklärung.", ["interactive brokers", "degiro", "revolut", "etoro"]),
+        new("kap-abrechnung", "Kauf, Verkauf & Sparpläne (Abrechnungen)", Gruppe.Kapital, Wirkung.Keine, "–",
+            "Wertpapierabrechnungen und Sparplan-Ausführungen aufheben – zählen erst beim Verkauf.", ["wertpapierabrechnung", "sparplan", "ausführung", "orderabrechnung", "isin", "etf", "fonds", "kauf", "verkauf"]),
+        new("kap-konto", "Depot- & Kontoauszüge, Freistellungsauftrag", Gruppe.Kapital, Wirkung.Keine, "–",
+            "Freistellungsaufträge zusammen höchstens 1.000 € (Ehepaare 2.000 €).", ["depotauszug", "freistellungsauftrag", "tagesgeld", "festgeld", "depot", "trade republic", "scalable", "comdirect", "consorsbank", "flatex"]),
 
         // Werbungskosten (Anlage N)
         new("arbeitsmittel", "Arbeitsmittel (Laptop, Werkzeug, Möbel)", Gruppe.Werbungskosten, Wirkung.Werbungskosten, "Anlage N – Arbeitsmittel",
@@ -144,7 +157,7 @@ public static class Kategorien
         new("vermietung-ausgaben", "Sonstige Werbungskosten Vermietung", Gruppe.Vermietung, Wirkung.MietAusgabe, "Anlage V, Zeile 50", "Fahrten zum Objekt (0,30 €/km), Inserate, Kontoführung, Porto, Steuerberatung, Rechtsschutz, Mieterwechsel.", ["immobilienscout", "mietinserat"]),
 
         // Sonstiges
-        new("bescheide", "Steuerbescheide & Finanzamt", Gruppe.Sonstiges, Wirkung.Keine, "–", "Bescheid prüfen, Einspruchsfrist 1 Monat.", ["finanzamt", "steuerbescheid", "bescheid für", "steuernummer", "elster"]),
+        new("bescheide", "Steuerbescheide & Finanzamt", Gruppe.Sonstiges, Wirkung.Keine, "–", "Bescheid prüfen, Einspruchsfrist 1 Monat.", ["finanzamt", "steuerbescheid", "bescheid für", "einkommensteuerbescheid", "festgesetzt", "steuernummer", "elster"]),
         new("vertraege", "Verträge & Nachweise", Gruppe.Sonstiges, Wirkung.Keine, "–", "Arbeitsvertrag, Mietvertrag, Kindergeld, Heiratsurkunde …", ["vertrag", "familienkasse", "kindergeld"]),
         new(Standard, "Sonstige Unterlagen", Gruppe.Sonstiges, Wirkung.Keine, "–", "", []),
     ];
@@ -165,6 +178,7 @@ public static class Kategorien
         Gruppe.Haushaltsnah => "Haushaltsnahe Leistungen & Handwerker",
         Gruppe.Selbststaendig => "Selbstständig / Nebengewerbe",
         Gruppe.Vermietung => "Vermietung",
+        Gruppe.Kapital => "Konten, Aktien & ETFs",
         _ => "Sonstiges",
     };
 
@@ -178,6 +192,7 @@ public static class Kategorien
         Gruppe.Haushaltsnah => "06 Haushaltsnahe Leistungen",
         Gruppe.Selbststaendig => "07 Selbstständig",
         Gruppe.Vermietung => "08 Vermietung",
+        Gruppe.Kapital => "10 Kapitalanlagen",
         _ => "09 Sonstiges",
     };
 

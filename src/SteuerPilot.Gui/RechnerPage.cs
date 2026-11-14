@@ -79,6 +79,38 @@ public sealed class RechnerPage : Page
         var pr = App.Daten.Profil;
 
         {
+            InputBox rente = null!; NumberBox beginn = null!;
+            var r = new Rechner("Rente: steuerpflichtiger Teil", "Je nach Jahr des Rentenbeginns ist ein fester Prozentsatz der Rente steuerpflichtig (2005: 50 %, 2020: 80 %, ab 2023 +0,5 % je Jahr).", () =>
+            {
+                var anteil = Steuer.Besteuerungsanteil(beginn.Value);
+                var stpfl = Math.Max(0, Fmt.Wert(rente) * anteil / 100m - Steuer.WerbungskostenPauschbetragRente);
+                var frei = Steuer.Grundfreibetrag(App.Jahr) * (pr.Splitting ? 2 : 1);
+                return $"Steuerpflichtig: {anteil:0.#} % → {Fmt.Euro(stpfl)} (nach 102 € Pauschbetrag)\n" +
+                       (stpfl <= frei ? $"Liegt unter dem Grundfreibetrag ({Fmt.Euro(frei)}) – ohne weitere Einkünfte meist keine Steuer." : $"Über dem Grundfreibetrag ({Fmt.Euro(frei)}) – Krankenkasse & Co. senken das noch.");
+            });
+            rente = r.Feld("Rente im Jahr (brutto) €", Geld("18000"));
+            beginn = r.Feld("Rentenbeginn (Jahr)", new NumberBox(1960, 2100) { Value = 2020 });
+            r.Fertig(); _flow.Controls.Add(r);
+        }
+        {
+            InputBox ertrag = null!, einbehalten = null!; CheckBox split = null!, kirche = null!;
+            var r = new Rechner("Zinsen, Dividenden & ETFs", "Kapitalerträge über dem Sparer-Pauschbetrag (1.000 €, Ehepaare 2.000 €) kosten 25 % Abgeltungsteuer plus Soli und ggf. Kirchensteuer.", () =>
+            {
+                var pausch = split.Checked ? 2000m : 1000m;
+                var stpfl = Math.Max(0, Fmt.Wert(ertrag) - pausch);
+                var (k, s, ki) = Steuer.Abgeltungsteuer(stpfl, kirche.Checked ? pr.KirchensteuerSatz : 0);
+                var diff = Fmt.Wert(einbehalten) - (k + s + ki);
+                return $"Steuerpflichtig {Fmt.Euro(stpfl)}  ·  Steuer {Fmt.Euro(k + s + ki)}\n" +
+                       (diff > 0 ? $"Zu viel einbehalten: {Fmt.Euro(diff)} → über die Anlage KAP zurückholen." : diff < 0 ? $"Noch offen: {Fmt.Euro(-diff)}" : "Passt – nichts zu tun.");
+            });
+            ertrag = r.Feld("Kapitalerträge im Jahr €", Geld("1500"));
+            einbehalten = r.Feld("Von der Bank einbehalten €", Geld("0"));
+            split = r.Feld("Verheiratet", Felder.Haken("Zusammenveranlagung", pr.Splitting));
+            kirche = r.Feld("Kirchensteuer", Felder.Haken($"{pr.KirchensteuerSatz:0} %", pr.Kirchensteuer));
+            r.Fertig(); _flow.Controls.Add(r);
+        }
+
+        {
             Rechner r = null!;
             InputBox zve = null!; ComboBox jahr = null!; CheckBox split = null!, kirche = null!;
             r = new Rechner("Einkommensteuer", "Tarif nach § 32a EStG inkl. Soli und Kirchensteuer.", () =>

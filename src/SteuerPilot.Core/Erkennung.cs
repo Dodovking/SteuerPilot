@@ -3,19 +3,31 @@ using System.Text.RegularExpressions;
 
 namespace SteuerPilot.Core;
 
-public sealed record Vorschlag(decimal? Betrag, DateTime? Datum, string? Kategorie, string? Beschreibung);
+public sealed record Vorschlag(decimal? Betrag, DateTime? Datum, string? Kategorie, string? Beschreibung, Kapitalwerte? Kapital = null, PersonAngaben? Angaben = null, string? Art = null);
 
 /// <summary>Liest Betrag, Datum und Kategorie aus dem per Texterkennung gelesenen Belegtext.</summary>
 public static partial class Erkennung
 {
     private static readonly string[] SummenWorte =
-        ["gesamtbetrag", "rechnungsbetrag", "endbetrag", "zu zahlen", "zahlbetrag", "gesamtsumme", "summe", "gesamt", "total", "brutto", "betrag", "bar", "ec-karte", "girocard", "kartenzahlung"];
+        ["gesamtbetrag", "rechnungsbetrag", "endbetrag", "zu zahlen", "zahlbetrag", "gesamtsumme", "summe", "gesamt", "total", "brutto", "betrag", " bar", "ec-karte", "girocard", "kartenzahlung"];
 
     [GeneratedRegex(@"(?<![\d,.])(\d{1,3}(?:\.\d{3})+|\d+)[,.](\d{2})(?![\d])")]
     private static partial Regex BetragRegex();
 
     [GeneratedRegex(@"(?<!\d)(\d{1,2})\s?[./-]\s?(\d{1,2})\s?[./-]\s?(\d{4}|\d{2})(?!\d)")]
     private static partial Regex DatumRegex();
+
+    [GeneratedRegex(@"\b(mwst|ust|umsatzsteuer|mehrwertsteuer|vorsteuer|netto|rückgeld|zurück|steuer\s*\d{1,2}\s*%)\b")]
+    private static partial Regex SteuerZeileRegex();
+
+    [GeneratedRegex(@"(-\s?)?(\d{1,3}(?:\.\d{3})+|\d+),(\d{2})(?!\d)(\s?-)?")]
+    private static partial Regex WertRegex();
+
+    [GeneratedRegex(@"(?:für\s+(?:das\s+)?(?:kalender|steuer)?jahr|kalenderjahr|steuerjahr|bescheinigung(?:\s+für)?|bescheid\s+für|rentenbezüge|meldung für)\s*:?\s*(20\d{2})(?!\d)", RegexOptions.IgnoreCase)]
+    private static partial Regex SteuerjahrRegex();
+
+    [GeneratedRegex(@"(?<!\d)(19[5-9]\d|20\d{2})(?!\d)")]
+    private static partial Regex JahrRegex();
 
     [GeneratedRegex(@"(?<!\d)(\d{4})-(\d{2})-(\d{2})(?!\d)")]
     private static partial Regex IsoRegex();
@@ -28,7 +40,156 @@ public static partial class Erkennung
     public static Vorschlag Auswerten(string text, DateTime? heute = null)
     {
         if (string.IsNullOrWhiteSpace(text)) return new Vorschlag(null, null, null, null);
-        return new Vorschlag(Betrag(text), Datum(text, heute ?? DateTime.Today), Kategorie(text), Beschreibung(text));
+        var h = heute ?? DateTime.Today;
+        var kat = Kategorie(text);
+        var betrag = Betrag(text);
+        var datum = Datum(text, h);
+        Kapitalwerte? kap = null;
+        PersonAngaben? angaben = null;
+        var k = Kategorien.Get(kat);
+        if (k.Wirkung == Wirkung.Kapital)
+        {
+            kap = Kapital(text);
+            if (kap != null) betrag = Math.Abs(kap.Ertraege != 0 ? kap.Ertraege : kap.VerlustAktien + kap.VerlustSonstige);
+        }
+        else if (k.Key == "lohnsteuerbescheinigung")
+        {
+            angaben = Lohnsteuer(text);
+            if (angaben != null) betrag = angaben.Bruttolohn;
+        }
+        else if (k.Key == "rente")
+        {
+            angaben = Rente(text);
+            if (angaben != null) betrag = angaben.Rente;
+        }
+        else if (k.Key == "bescheide")
+        {
+            var z = Klein(text);
+            var b = Wert(z, l => l.Contains("erstattung") || l.Contains("nachzahlung") || l.Contains("verbleibende") || l.Contains("abrechnungsergebnis"));
+            if (b != null) betrag = Math.Abs(b.Value);
+        }
+        if (k.Key is "lohnsteuerbescheinigung" or "rente" or "bescheide" || k.Wirkung == Wirkung.Kapital)
+        {
+            var sj = Steuerjahr(text, h);
+            if (sj != null) datum = new DateTime(sj.Value, 12, 31);
+        }
+        var art = Art(text);
+        var beschreibung = Beschreibung(text);
+        if (art != null) beschreibung = beschreibung == null ? art : $"{art} – {beschreibung}";
+        if (beschreibung?.Length > 60) beschreibung = beschreibung[..60].Trim();
+        return new Vorschlag(betrag, datum, kat, beschreibung, kap, angaben, art);
+    }
+
+    private static readonly (string Art, string[] Worte)[] Arten =
+    [
+        ("Steuerbescheid", ["steuerbescheid", "bescheid fur", "bescheid uber", "festsetzung", "festgesetzt", "finanzamt"]),
+        ("Lohnsteuerbescheinigung", ["lohnsteuerbescheinigung", "bruttoarbeitslohn"]),
+        ("Rentenbescheinigung", ["rentenbezugsmitteilung", "rentenanpassung", "meldung an die finanzverwaltung", "rentenbetrag"]),
+        ("Bankbescheinigung", ["jahressteuerbescheinigung", "steuerbescheinigung", "verlustbescheinigung", "kapitalertragsteuer"]),
+        ("Spendenbescheinigung", ["zuwendungsbestatigung", "spendenbescheinigung", "spendenquittung"]),
+        ("Kontoauszug", ["kontoauszug", "depotauszug", "alter kontostand", "neuer kontostand", "umsatzubersicht"]),
+        ("Wertpapierabrechnung", ["wertpapierabrechnung", "sparplan", "orderabrechnung", "ausfuhrung"]),
+        ("Versicherung", ["versicherungsschein", "beitragsrechnung", "beitragsbescheinigung", "police"]),
+        ("Vertrag", ["vertrag", "vereinbarung zwischen"]),
+        ("Kassenbon", ["kassenbon", "bon-nr", "bonnr", "ruckgeld", "gegeben", "kasse", "ec-karte", "girocard", "tse"]),
+        ("Rechnung", ["rechnung", "rechnungsnummer", "rechnungs-nr", "rechnungsbetrag", "zahlbar bis", "leistungszeitraum"]),
+    ];
+
+    /// <summary>Was für ein Dokument ist das? (Rechnung, Kassenbon, Steuerbescheid, Bescheinigung …)</summary>
+    public static string? Art(string text)
+    {
+        var t = string.Join("\n", Klein(text));
+        string? best = null;
+        int bestScore = 0;
+        foreach (var (art, worte) in Arten)
+        {
+            int score = worte.Count(w => t.Contains(w, StringComparison.Ordinal));
+            if (score > bestScore) { best = art; bestScore = score; }
+        }
+        return best;
+    }
+
+    /// <summary>„für das Jahr 2025“, „Steuerbescheinigung 2025“ – Bescheinigungen gehören ins bescheinigte Jahr, nicht ins Ausstellungsjahr.</summary>
+    public static int? Steuerjahr(string text, DateTime heute)
+    {
+        foreach (Match m in SteuerjahrRegex().Matches(text))
+        {
+            var j = int.Parse(m.Groups[1].Value);
+            if (j <= heute.Year && j >= heute.Year - 10) return j;
+        }
+        return null;
+    }
+
+    /// <summary>Betrag in der Zeile, die passt (letzter Wert), sonst erster Wert der nächsten Zeile.</summary>
+    private static decimal? Wert(string[] zeilen, Func<string, bool> passt)
+    {
+        for (int i = 0; i < zeilen.Length; i++)
+        {
+            if (!passt(zeilen[i])) continue;
+            var m = WertRegex().Matches(zeilen[i]);
+            if (m.Count == 0 && i + 1 < zeilen.Length) m = WertRegex().Matches(zeilen[i + 1]);
+            if (m.Count == 0) continue;
+            var x = m[^1];
+            if (!decimal.TryParse($"{x.Groups[2].Value.Replace(".", "")}.{x.Groups[3].Value}", NumberStyles.Number, CultureInfo.InvariantCulture, out var v)) continue;
+            return x.Groups[1].Success || x.Groups[4].Success ? -v : v;
+        }
+        return null;
+    }
+
+    private static string[] Klein(string text) => text.ToLowerInvariant().Replace("ä", "a").Replace("ö", "o").Replace("ü", "u").Replace("ß", "ss").Split('\n');
+
+    public static Kapitalwerte? Kapital(string text)
+    {
+        var z = Klein(text);
+        var w = new Kapitalwerte
+        {
+            Ertraege = Wert(z, l => l.Contains("kapitalertr") && !l.Contains("kapitalertragsteuer") && !l.Contains("davon")) ?? 0,
+            AktienGewinne = Math.Max(0, Wert(z, l => l.Contains("aktienverausserung") && l.Contains("gewinn") && !l.Contains("verlust")) ?? 0),
+            VerlustAktien = Math.Abs(Wert(z, l => l.Contains("verlust") && l.Contains("aktie") && !l.Contains("ohne")) ?? 0),
+            VerlustSonstige = Math.Abs(Wert(z, l => l.Contains("verlust") && l.Contains("ohne")) ?? 0),
+            Kapest = Math.Abs(Wert(z, l => l.Contains("kapitalertragsteuer") && !l.Contains("kirchensteuer")) ?? 0),
+            Soli = Math.Abs(Wert(z, l => l.Contains("solidaritat")) ?? 0),
+            Kist = Math.Abs(Wert(z, l => l.Contains("kirchensteuer")) ?? 0),
+            Pauschbetrag = Math.Abs(Wert(z, l => l.Contains("pauschbetrag") || l.Contains("freistellungsauftrag")) ?? 0),
+        };
+        return w.Leer && w.Pauschbetrag == 0 ? null : w;
+    }
+
+    public static PersonAngaben? Lohnsteuer(string text)
+    {
+        var z = Klein(text);
+        var a = new PersonAngaben
+        {
+            Bruttolohn = Wert(z, l => l.Contains("bruttoarbeitslohn")) ?? 0,
+            Lohnsteuer = Wert(z, l => l.Contains("lohnsteuer") && l.Contains("einbehalten")) ?? 0,
+            Soli = Wert(z, l => l.Contains("solidaritat") && l.Contains("einbehalten")) ?? 0,
+            Kirchensteuer = Wert(z, l => l.Contains("kirchensteuer des arbeitnehmers")) ?? 0,
+            RentenversicherungAN = Wert(z, l => l.Contains("rentenversicherung") && l.Contains("arbeitnehmer")) ?? 0,
+            KrankenversicherungAN = Wert(z, l => l.Contains("krankenversicherung") && l.Contains("arbeitnehmer")) ?? 0,
+            PflegeversicherungAN = Wert(z, l => l.Contains("pflegeversicherung") && l.Contains("arbeitnehmer")) ?? 0,
+            ArbeitslosenversicherungAN = Wert(z, l => l.Contains("arbeitslosenversicherung")) ?? 0,
+        };
+        return a.Bruttolohn > 0 ? a : null;
+    }
+
+    public static PersonAngaben? Rente(string text)
+    {
+        var z = Klein(text);
+        var a = new PersonAngaben
+        {
+            Rente = Math.Abs(Wert(z, l => (l.Contains("rentenbetrag") || l.Contains("leibrente") || l.Contains("jahresbetrag") || l.Contains("betrag der rente") || l.Contains("rentenbezuge"))
+                                            && !l.Contains("kranken") && !l.Contains("pflege")) ?? 0),
+            RentnerKv = Math.Abs(Wert(z, l => l.Contains("krankenversicherung")) ?? 0),
+            RentnerPv = Math.Abs(Wert(z, l => l.Contains("pflegeversicherung")) ?? 0),
+        };
+        for (int i = 0; i < z.Length && a.Rentenbeginn == 0; i++)
+        {
+            if (!z[i].Contains("beginn")) continue;
+            var m = JahrRegex().Match(z[i]);
+            if (!m.Success && i + 1 < z.Length) m = JahrRegex().Match(z[i + 1]);
+            if (m.Success) a.Rentenbeginn = int.Parse(m.Value);
+        }
+        return a.Rente > 0 ? a : null;
     }
 
     public static decimal? Betrag(string text)
@@ -40,7 +201,7 @@ public static partial class Erkennung
         foreach (var raw in lines)
         {
             var line = raw.ToLowerInvariant();
-            if (line.Contains("mwst") || line.Contains("ust") || line.Contains("steuer") || line.Contains("netto") || line.Contains("rückgeld") || line.Contains("zurück")) continue;
+            if (SteuerZeileRegex().IsMatch(line)) continue;
             var werte = BetragRegex().Matches(line).Select(m => Parse(m)).Where(v => v is > 0 and < 1_000_000).Select(v => v!.Value).ToList();
             if (werte.Count == 0) continue;
             max = Math.Max(max, werte.Max());

@@ -37,6 +37,10 @@ public sealed class BelegForm : DialogBase
     private readonly Label _ocrInfo;
     private readonly Vorschau _vorschau = new() { Dock = DockStyle.Right };
     private bool _benutzerKategorie;
+    private Vorschlag? _vorschlag;
+    private readonly Label _kapHeading;
+    private readonly InputBox[] _kap;
+    private readonly List<Control> _kapControls = [];
 
     public List<string> NeueDateien { get; } = [];
     public List<string> EntfernteDateien { get; } = [];
@@ -110,6 +114,22 @@ public sealed class BelegForm : DialogBase
         _notiz.Height = Ui.S(70);
         _notiz.Text = b.Notiz;
         Place(_notiz, _notiz.Height);
+
+        _kapHeading = AddHeading("Werte der Bankbescheinigung (Anlage KAP)");
+        _kapControls.Add(_kapHeading);
+        var kw = b.Kapital ?? new Kapitalwerte();
+        decimal[] start = [kw.Ertraege, kw.AktienGewinne, kw.Kapest, kw.Soli, kw.Kist, kw.VerlustAktien, kw.VerlustSonstige];
+        _kap = start.Select(x => Felder.Text(120, x == 0 ? "" : x.ToString("0.00", Fmt.De), rechts: true)).ToArray();
+        string[] namen = ["Kapitalerträge €", "davon Aktiengewinne €", "Kapitalertragsteuer €", "Soli €", "Kirchensteuer €", "Verluste Aktien €", "Verluste sonstige €"];
+        for (int i = 0; i < _kap.Length; i += 2)
+        {
+            static Label Fest(string t, int breite) { var l = Make.Label(t); l.AutoSize = false; l.Size = new Size(Ui.S(breite), l.PreferredHeight); return l; }
+            var parts = new List<object> { Fest(namen[i], 170), _kap[i] };
+            if (i + 1 < _kap.Length) parts.AddRange([Fest("   " + namen[i + 1], 190), _kap[i + 1]]);
+            int vor = Body.Controls.Count;
+            AddLine(parts.ToArray());
+            _kapControls.AddRange(Body.Controls.Cast<Control>().Skip(vor));
+        }
         FinishLayout();
 
         foreach (var rel in b.Dateien) _dateien.Items.Add(new Eintrag(app.Ablage.Absolut(rel), rel));
@@ -154,6 +174,7 @@ public sealed class BelegForm : DialogBase
         _arbeit.Enabled = k.MitArbeitskosten;
         _arbeitLabel.Enabled = k.MitArbeitskosten;
         _objekt.Enabled = _objektLabel.Enabled = k.Gruppe == Gruppe.Vermietung;
+        foreach (var c in _kapControls) c.Visible = k.Wirkung == Wirkung.Kapital;
         AfaInfo();
     }
 
@@ -202,6 +223,12 @@ public sealed class BelegForm : DialogBase
             if (erg.Fehler != null) throw new InvalidOperationException(erg.Fehler);
             var text = erg.Text;
             var v = erg.Vorschlag;
+            _vorschlag = v;
+            if (v.Kapital is Kapitalwerte kw && (überschreiben || _kap.All(x => string.IsNullOrWhiteSpace(x.Text))))
+            {
+                decimal[] w = [kw.Ertraege, kw.AktienGewinne, kw.Kapest, kw.Soli, kw.Kist, kw.VerlustAktien, kw.VerlustSonstige];
+                for (int i = 0; i < w.Length; i++) _kap[i].Text = w[i] == 0 ? "" : w[i].ToString("0.00", Fmt.De);
+            }
             var teile = new List<string>();
             if (v.Betrag is decimal betrag && (überschreiben || string.IsNullOrWhiteSpace(_betrag.Text)))
             {
@@ -258,6 +285,20 @@ public sealed class BelegForm : DialogBase
         _b.Arbeitskosten = k.MitArbeitskosten ? Fmt.Zahl(_arbeit.Text) : null;
         _b.Objekt = k.Gruppe == Gruppe.Vermietung && _objekt.SelectedIndex > 0 ? (string)_objekt.SelectedItem! : "";
         _b.Notiz = _notiz.Text.Trim();
+        if (k.Wirkung == Wirkung.Kapital)
+        {
+            decimal W(int i) => Fmt.Zahl(_kap[i].Text) ?? 0;
+            _b.Kapital = new Kapitalwerte
+            {
+                Ertraege = W(0), AktienGewinne = W(1), Kapest = W(2), Soli = W(3), Kist = W(4),
+                VerlustAktien = Math.Abs(W(5)), VerlustSonstige = Math.Abs(W(6)),
+            };
+            if (_b.Kapital.Leer) _b.Kapital = new Kapitalwerte { Ertraege = _b.Betrag };
+            _app.Daten.Profil.HatKapital = true;
+        }
+        else _b.Kapital = null;
+        if (_vorschlag?.Angaben != null && k.Key is "lohnsteuerbescheinigung" or "rente" && Belegerkennung.AngabenUebernehmen(_app, _vorschlag, _b) is string info)
+            MessageBox.Show(this, info + ".", "Meine Angaben", MessageBoxButtons.OK, MessageBoxIcon.Information);
         NeueDateien.Clear();
         NeueDateien.AddRange(_dateien.Items.Cast<Eintrag>().Where(e => e.Rel == null).Select(e => e.Abs));
         _vorschau.Zeigen(null);

@@ -22,6 +22,17 @@ public static class Ocr
     private static OcrEngine? Engine() =>
         OcrEngine.TryCreateFromLanguage(new Language("de-DE")) ?? OcrEngine.TryCreateFromUserProfileLanguages();
 
+    /// <summary>Installiert die deutsche Texterkennung von Windows (fragt nach Administratorrechten).</summary>
+    public static void DeutschInstallieren()
+    {
+        var cmd = "Add-WindowsCapability -Online -Name 'Language.OCR~~~de-DE~0.0.1.0'; Write-Host 'Fertig - SteuerPilot bitte neu starten.'; Start-Sleep 5";
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("powershell.exe", $"-NoProfile -Command \"{cmd}\"")
+        {
+            UseShellExecute = true,
+            Verb = "runas",
+        });
+    }
+
     public static async Task<string> TextAus(string pfad, CancellationToken ct = default)
     {
         var engine = Engine() ?? throw new InvalidOperationException(
