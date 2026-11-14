@@ -22,8 +22,28 @@ public sealed class EingangPage : Page
         var import = new FlatButton("Dateien hinzufügen");
         var ordner = new FlatButton("Ordner öffnen", ButtonKind.Ghost);
         var lesen = new FlatButton("Gelesenen Text anzeigen", ButtonKind.Ghost);
+        var zurueck = new FlatButton("Aus Papierkorb zurückholen", ButtonKind.Ghost);
+        zurueck.Click += (_, _) =>
+        {
+            Directory.CreateDirectory(App.Ablage.Papierkorb);
+            using var d = new OpenFileDialog
+            {
+                Title = "Gelöschte Dateien zurückholen (landen wieder im Eingang)",
+                InitialDirectory = App.Ablage.Papierkorb,
+                Multiselect = true,
+                Filter = "Alle Dateien|*.*",
+            };
+            if (d.ShowDialog(Main) != DialogResult.OK) return;
+            foreach (var f in d.FileNames)
+            {
+                try { File.Move(f, Ablage.Eindeutig(Path.Combine(App.Ablage.Eingang, Path.GetFileName(f)))); }
+                catch (Exception ex) { Aktionen.Fehler(Main, $"„{Path.GetFileName(f)}“ konnte nicht zurückgeholt werden:", ex); }
+            }
+            Main.UpdateEingangBadge();
+            Aktualisieren();
+        };
         lesen.Click += async (_, _) => { if (Ausgewaehlt().FirstOrDefault() is string f) await Aktionen.TextZeigen(Main, f); };
-        var top = Leiste(_erfassen, _auto, _zusammen, scan, import, lesen, ordner, _loeschen);
+        var top = Leiste(_erfassen, _auto, _zusammen, scan, import, lesen, zurueck, ordner, _loeschen);
         var infoPanel = new Panel { Dock = DockStyle.Top, Height = Ui.S(30) };
         infoPanel.Controls.Add(_info);
         infoPanel.Controls.Add(_ocrInstall);
