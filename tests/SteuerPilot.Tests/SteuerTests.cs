@@ -118,6 +118,38 @@ public class AuswertungTests
     }
 
     [Fact]
+    public void GebaeudeAfaMonatsgenauUndNachBaujahr()
+    {
+        Assert.Equal(2.5m, Steuer.GebaeudeAfaSatz(1910));
+        Assert.Equal(2m, Steuer.GebaeudeAfaSatz(1990));
+        Assert.Equal(3m, Steuer.GebaeudeAfaSatz(2024));
+        var kauf = new DateTime(2024, 4, 15);
+        Assert.Equal(3750m, Steuer.GebaeudeAfa(250000, kauf, 2m, 2024)); // 9 Monate
+        Assert.Equal(5000m, Steuer.GebaeudeAfa(250000, kauf, 2m, 2025));
+        Assert.Equal(0m, Steuer.GebaeudeAfa(250000, kauf, 2m, 2023));
+        Assert.Equal(250000m, Enumerable.Range(2024, 60).Sum(j => Steuer.GebaeudeAfa(250000, kauf, 2m, j)));
+    }
+
+    [Fact]
+    public void VermietungJeObjektMitAfa()
+    {
+        var _tmp = Path.Combine(Path.GetTempPath(), "sp-" + Guid.NewGuid().ToString("N"));
+        var d = new SteuerDaten();
+        d.Profil.Mietobjekte.Add(new Mietobjekt { Name = "Musterstraße 1", Gebaeudekosten = 200000, Anschaffung = new DateTime(2020, 1, 1), Baujahr = 1980 });
+        d.Belege.Add(new Beleg { Datum = new DateTime(2025, 3, 1), Betrag = 9600, Kategorie = "mieteinnahmen", Objekt = "Musterstraße 1" });
+        d.Belege.Add(new Beleg { Datum = new DateTime(2025, 5, 1), Betrag = 1600, Kategorie = "miet-schuldzinsen", Objekt = "Musterstraße 1" });
+        d.Belege.Add(new Beleg { Datum = new DateTime(2025, 6, 1), Betrag = 500, Kategorie = "miet-erhaltung" });
+        var o = Auswertung.Objekte(d.Profil, Auswertung.Posten(d, 2025), 2025);
+        Assert.Equal(2, o.Count);
+        Assert.Equal(9600m - 1600m - 4000m, o[0].Ergebnis);
+        Assert.Equal(-500m, o[1].Ergebnis);
+        var s = Auswertung.Schaetzen(d, 2025);
+        Assert.Contains(s.Zeilen, z => z.Text == "Überschuss Vermietung Musterstraße 1" && z.Betrag == 4000m);
+        Assert.Equal(Path.Combine("2025", "08 Vermietung", "Musterstraße 1", "Mieteinnahmen (Kaltmiete)"),
+            Path.GetRelativePath(_tmp, new Ablage(_tmp).ZielOrdner(d.Belege[0])));
+    }
+
+    [Fact]
     public void ZusammenveranlagungNutztSplitting()
     {
         var d = Beispiel();

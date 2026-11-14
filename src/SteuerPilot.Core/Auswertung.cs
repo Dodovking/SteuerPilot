@@ -59,6 +59,53 @@ public static class Auswertung
     public static Dictionary<Gruppe, decimal> SummenNachGruppe(IEnumerable<Posten> posten) =>
         posten.GroupBy(p => p.Kat.Gruppe).ToDictionary(g => g.Key, g => g.Sum(p => p.Ansatz));
 
+    public sealed record Objektergebnis(string Name, decimal Einnahmen, decimal Ausgaben, decimal Afa)
+    {
+        public decimal Ergebnis => Einnahmen - Ausgaben - Afa;
+    }
+
+    /// <summary>Anlage V je Mietobjekt; Belege ohne (bekanntes) Objekt landen unter „Weitere Vermietung“.</summary>
+    public static List<Objektergebnis> Objekte(Profil profil, IEnumerable<Posten> posten, int jahr)
+    {
+        var miet = posten.Where(p => p.Kat.Gruppe == Gruppe.Vermietung).ToList();
+        var namen = profil.Mietobjekte.Select(o => o.Name.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var list = new List<Objektergebnis>();
+        foreach (var o in profil.Mietobjekte.Where(o => o.Anschaffung.Year <= jahr || miet.Any(p => Gleich(p, o.Name))))
+        {
+            var eigene = miet.Where(p => Gleich(p, o.Name)).ToList();
+            list.Add(new(string.IsNullOrWhiteSpace(o.Name) ? "Mietobjekt" : o.Name.Trim(),
+                Summe(eigene, Wirkung.MietEinnahme), Summe(eigene, Wirkung.MietAusgabe),
+                Steuer.GebaeudeAfa(o.Gebaeudekosten, o.Anschaffung, o.Satz, jahr)));
+        }
+        var rest = miet.Where(p => !namen.Contains(p.Beleg.Objekt.Trim())).ToList();
+        if (rest.Count > 0)
+            list.Add(new(list.Count > 0 ? "Weitere Vermietung (ohne Objekt)" : "Vermietung", Summe(rest, Wirkung.MietEinnahme), Summe(rest, Wirkung.MietAusgabe), 0));
+        return list;
+    }
+
+    private static bool Gleich(Posten p, string name) => string.Equals(p.Beleg.Objekt.Trim(), name.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    private static decimal Vermietung(Profil profil, List<Posten> posten, int jahr, List<Zeile> zeilen, List<string> hinweise)
+    {
+        var objekte = Objekte(profil, posten, jahr);
+        foreach (var o in objekte)
+        {
+            var text = $"Einnahmen {o.Einnahmen:N2} € − Kosten {o.Ausgaben:N2} €" + (o.Afa > 0 ? $" − Gebäude-AfA {o.Afa:N2} €" : "");
+            zeilen.Add(new Zeile($"{(o.Ergebnis >= 0 ? "Überschuss" : "Verlust")} Vermietung {o.Name}", o.Ergebnis, text));
+        }
+        if (objekte.Any(o => o.Einnahmen > 0) && !profil.Mietobjekte.Any(o => o.Gebaeudekosten > 0))
+            hinweise.Add("Vermietung: Leg unter „Meine Angaben“ dein Mietobjekt mit den Gebäudekosten an – die Gebäude-AfA (meist 2 % pro Jahr) senkt die Steuer oft deutlich.");
+        foreach (var o in profil.Mietobjekte.Where(o => o.Gebaeudekosten > 0 && jahr - o.Anschaffung.Year < 3))
+        {
+            var erhaltung = posten.Where(p => p.Kat.Key == "miet-erhaltung" && Gleich(p, o.Name) && p.Beleg.Datum < o.Anschaffung.AddYears(3) && p.Beleg.Datum >= o.Anschaffung)
+                .Sum(p => p.Beleg.Betrag);
+            var grenze = o.Gebaeudekosten / 1.19m * 0.15m;
+            if (erhaltung > grenze)
+                hinweise.Add($"{o.Name}: Renovierungen in den ersten 3 Jahren nach dem Kauf ({erhaltung:N0} €) liegen über 15 % der Gebäudekosten ({grenze:N0} €) – das Finanzamt behandelt sie als anschaffungsnahe Herstellungskosten (Abschreibung über die Gebäude-AfA statt sofort).");
+        }
+        return objekte.Sum(o => o.Ergebnis);
+    }
+
     /// <summary>Grobe Schätzung von Erstattung bzw. Nachzahlung (ohne Gewähr, keine Steuerberatung).</summary>
     public static Schaetzung Schaetzen(SteuerDaten d, int jahr)
     {
@@ -97,8 +144,7 @@ public static class Auswertung
 
         var gewinn = Summe(posten, Wirkung.BetriebEinnahme) - Summe(posten, Wirkung.BetriebAusgabe);
         if (posten.Any(p => p.Kat.Gruppe == Gruppe.Selbststaendig)) zeilen.Add(new Zeile("Gewinn Selbstständig/Nebengewerbe", gewinn, "Einnahmen − Ausgaben"));
-        var vuv = Summe(posten, Wirkung.MietEinnahme) - Summe(posten, Wirkung.MietAusgabe);
-        if (posten.Any(p => p.Kat.Gruppe == Gruppe.Vermietung)) zeilen.Add(new Zeile("Überschuss Vermietung", vuv));
+        var vuv = Vermietung(profil, posten, jahr, zeilen, hinweise);
 
         var summeEinkuenfte = einkuenfteNs + gewinn + vuv;
         decimal gde = summeEinkuenfte;

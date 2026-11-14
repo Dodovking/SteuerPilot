@@ -139,6 +139,9 @@ public sealed class MainForm : Form
         _nav.Padding = new Padding(Ui.S(12), Ui.S(14), Ui.S(12), Ui.S(12));
         foreach (var (b, _) in _pages) _nav.Controls.Add(b);
         _nav.Controls.Add(_version);
+        var update = new FlatButton("Nach Updates suchen") { Width = Ui.S(196) };
+        update.Click += (_, _) => OpenUpdate();
+        _nav.Controls.Add(update);
         _version.Text = $"Version {Updater.CurrentVersion.ToString(3)}\nOhne Gewähr – keine Steuerberatung";
         _nav.Layout += (_, _) =>
         {
@@ -149,6 +152,7 @@ public sealed class MainForm : Form
                 y += b.Height + Ui.S(4);
             }
             _version.Location = new Point(Ui.S(20), _nav.Height - _version.PreferredHeight - Ui.S(14));
+            update.Location = new Point(Ui.S(12), Math.Max(y + Ui.S(12), _version.Top - update.Height - Ui.S(10)));
         };
         _nav.Paint += (_, e) =>
         {

@@ -134,9 +134,14 @@ public static class Kategorien
         new("betrieb-fahrzeug", "Fahrzeugkosten (betrieblich)", Gruppe.Selbststaendig, Wirkung.BetriebAusgabe, "Anlage EÜR", "", ["tankstelle", "aral", "shell", "esso", "werkstatt", "kfz-steuer", "tüv", "dekra"]),
 
         // Vermietung (Anlage V)
-        new("mieteinnahmen", "Mieteinnahmen", Gruppe.Vermietung, Wirkung.MietEinnahme, "Anlage V", "", ["mieteingang", "kaltmiete"]),
-        new("vermietung-ausgaben", "Werbungskosten Vermietung", Gruppe.Vermietung, Wirkung.MietAusgabe, "Anlage V",
-            "Zinsen, Grundsteuer, Reparaturen, Verwaltung. Gebäude-AfA meist 50 Jahre (2 %).", ["darlehen", "zinsen", "grundsteuer", "hausverwaltung", "gebäudeversicherung"]),
+        new("mieteinnahmen", "Mieteinnahmen (Kaltmiete)", Gruppe.Vermietung, Wirkung.MietEinnahme, "Anlage V, Zeile 9", "Alle im Jahr zugeflossenen Mieten, auch Nachzahlungen. Bei Miete unter 50 % der ortsüblichen Miete sind Kosten nur anteilig absetzbar (unter 66 % Prognose nötig).", ["mieteingang", "kaltmiete", "mietzahlung"]),
+        new("miet-umlagen", "Umlagen / Nebenkosten vom Mieter", Gruppe.Vermietung, Wirkung.MietEinnahme, "Anlage V, Zeile 13", "Nebenkostenvorauszahlungen und -nachzahlungen der Mieter sind Einnahmen; Erstattungen an Mieter mindern sie.", ["nebenkostenvorauszahlung", "betriebskostenvorauszahlung"]),
+        new("miet-schuldzinsen", "Schuldzinsen & Finanzierung", Gruppe.Vermietung, Wirkung.MietAusgabe, "Anlage V, Zeile 37", "Nur die Zinsen (nicht die Tilgung) des Darlehens für das Mietobjekt, dazu Bereitstellungszinsen, Disagio, Grundbuch für die Grundschuld.", ["darlehenskonto", "zinsbescheinigung", "baufinanzierung", "annuitätendarlehen"]),
+        new("miet-grundsteuer", "Grundsteuer & Abgaben", Gruppe.Vermietung, Wirkung.MietAusgabe, "Anlage V, Zeile 47", "Grundsteuer, Müll, Straßenreinigung, Abwasser – auch wenn auf den Mieter umgelegt.", ["grundsteuer", "abgabenbescheid", "grundbesitzabgaben", "straßenreinigung"]),
+        new("miet-betriebskosten", "Betriebskosten, Versicherung & Verwaltung", Gruppe.Vermietung, Wirkung.MietAusgabe, "Anlage V, Zeilen 47–49", "Gebäudeversicherung, Hausgeld/WEG (ohne Rücklage), Hausverwaltung, Allgemeinstrom, Wasser, Hausmeister.", ["gebäudeversicherung", "wohngebäudeversicherung", "hausgeld", "hausverwaltung", "wohnungseigentümergemeinschaft", "weg-abrechnung"]),
+        new("miet-erhaltung", "Reparaturen & Erhaltungsaufwand", Gruppe.Vermietung, Wirkung.MietAusgabe, "Anlage V, Zeile 40", "Sofort absetzbar. Achtung: Mehr als 15 % der Gebäudekosten (netto) in den ersten 3 Jahren nach dem Kauf → wird über die Gebäude-AfA verteilt. Große Beträge können auf 2–5 Jahre verteilt werden (§ 82b EStDV).", ["renovierung", "instandhaltung", "sanierung"]),
+        new("miet-einrichtung", "Einrichtung der Mietwohnung (Küche, Möbel)", Gruppe.Vermietung, Wirkung.MietAusgabe, "Anlage V, Zeile 33", "Einbauküche 10 Jahre, Möbel 13 Jahre abschreiben; bis 952 € brutto sofort.", ["einbauküche"]),
+        new("vermietung-ausgaben", "Sonstige Werbungskosten Vermietung", Gruppe.Vermietung, Wirkung.MietAusgabe, "Anlage V, Zeile 50", "Fahrten zum Objekt (0,30 €/km), Inserate, Kontoführung, Porto, Steuerberatung, Rechtsschutz, Mieterwechsel.", ["immobilienscout", "mietinserat"]),
 
         // Sonstiges
         new("bescheide", "Steuerbescheide & Finanzamt", Gruppe.Sonstiges, Wirkung.Keine, "–", "Bescheid prüfen, Einspruchsfrist 1 Monat.", ["finanzamt", "steuerbescheid", "bescheid für", "steuernummer", "elster"]),

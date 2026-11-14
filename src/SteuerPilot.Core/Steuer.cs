@@ -146,6 +146,18 @@ public static class Steuer
         return danach - bisher;
     }
 
+    /// <summary>Gebäude-AfA (§ 7 Abs. 4 EStG): Baujahr vor 1925 2,5 %, ab 2023 fertiggestellt 3 %, sonst 2 %.</summary>
+    public static decimal GebaeudeAfaSatz(int baujahr) => baujahr < 1925 ? 2.5m : baujahr >= 2023 ? 3m : 2m;
+
+    /// <summary>Gebäude-AfA im Jahr, im Anschaffungsjahr monatsgenau, insgesamt höchstens die Kosten.</summary>
+    public static decimal GebaeudeAfa(decimal kosten, DateTime anschaffung, decimal satz, int jahr)
+    {
+        if (kosten <= 0 || satz <= 0 || jahr < anschaffung.Year) return 0;
+        decimal voll = kosten * satz / 100m;
+        decimal Bis(int j) => Math.Min(kosten, Cent(voll * (13 - anschaffung.Month) / 12m) + Cent(voll * (j - anschaffung.Year)));
+        return Bis(jahr) - (jahr == anschaffung.Year ? 0 : Bis(jahr - 1));
+    }
+
     public static IEnumerable<(int Jahr, decimal Betrag)> Abschreibungsplan(decimal kosten, DateTime kauf, int nutzungsjahre)
     {
         int ende = nutzungsjahre <= 1 ? kauf.Year : kauf.Year + nutzungsjahre;

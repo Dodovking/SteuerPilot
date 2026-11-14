@@ -43,6 +43,9 @@ public sealed class Beleg
     /// <summary>Dateien relativ zum Ablageordner.</summary>
     public List<string> Dateien { get; set; } = [];
 
+    /// <summary>Nur Vermietung: Name des Mietobjekts (siehe Profil.Mietobjekte).</summary>
+    public string Objekt { get; set; } = "";
+
     public string Notiz { get; set; } = "";
     public DateTime Erstellt { get; set; } = DateTime.Now;
 
@@ -84,6 +87,22 @@ public sealed class Jahresangaben
     public decimal Vorauszahlungen { get; set; }
 }
 
+/// <summary>Vermietete Wohnung/Haus (Anlage V).</summary>
+public sealed class Mietobjekt
+{
+    public string Name { get; set; } = "";
+    public string Adresse { get; set; } = "";
+    /// <summary>Anschaffungs-/Herstellungskosten nur des Gebäudes (ohne Grund und Boden), inkl. Nebenkosten.</summary>
+    public decimal Gebaeudekosten { get; set; }
+    public DateTime Anschaffung { get; set; } = new(DateTime.Today.Year, 1, 1);
+    public int Baujahr { get; set; } = 1990;
+    /// <summary>AfA-Satz in Prozent; 0 = automatisch nach Baujahr.</summary>
+    public decimal AfaSatz { get; set; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public decimal Satz => AfaSatz > 0 ? AfaSatz : Steuer.GebaeudeAfaSatz(Baujahr);
+}
+
 public sealed class Profil
 {
     public string Name { get; set; } = "";
@@ -93,6 +112,7 @@ public sealed class Profil
     public string Bundesland { get; set; } = "Nordrhein-Westfalen";
     public int Kinder { get; set; }
     public bool Alleinerziehend { get; set; }
+    public List<Mietobjekt> Mietobjekte { get; set; } = [];
 
     [JsonIgnore]
     public bool Splitting => Veranlagung == Veranlagung.Zusammen;

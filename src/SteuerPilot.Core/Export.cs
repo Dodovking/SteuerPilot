@@ -12,13 +12,13 @@ public static class Export
     public static string Csv(SteuerDaten d, int jahr)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("Datum;Gruppe;Kategorie;Formular;Person;Beschreibung;Betrag;Anteil %;Abschreibung Jahre;Arbeitskosten;Steuerlich angesetzt;Notiz;Dateien");
+        sb.AppendLine("Datum;Gruppe;Kategorie;Formular;Person;Mietobjekt;Beschreibung;Betrag;Anteil %;Abschreibung Jahre;Arbeitskosten;Steuerlich angesetzt;Notiz;Dateien");
         foreach (var p in Auswertung.Posten(d, jahr))
         {
             var b = p.Beleg;
             sb.AppendJoin(';',
                 b.Datum.ToString("dd.MM.yyyy", De), Feld(Kategorien.GruppenName(b.Kat.Gruppe)), Feld(b.Kat.Name), Feld(b.Kat.Formular),
-                Feld(d.Profil.PersonName(b.Person)), Feld(b.Beschreibung + (p.AusVorjahr ? $" (Abschreibung aus {b.Jahr})" : "")),
+                Feld(d.Profil.PersonName(b.Person)), Feld(b.Objekt), Feld(b.Beschreibung + (p.AusVorjahr ? $" (Abschreibung aus {b.Jahr})" : "")),
                 b.Betrag.ToString("0.00", De), b.Anteil, b.AfaJahre, b.Arbeitskosten?.ToString("0.00", De) ?? "", p.Ansatz.ToString("0.00", De),
                 Feld(b.Notiz), Feld(string.Join(" | ", b.Dateien)));
             sb.AppendLine();

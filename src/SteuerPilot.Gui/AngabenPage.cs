@@ -115,6 +115,50 @@ public sealed class AngabenPage : Page
         Feld("Mit eigenem Auto", "ohne Auto max. 4.500 €", p => Haken("ja", p.MitEigenemAuto, v => p.MitEigenemAuto = v));
         Feld("Homeoffice-Tage", "6 € pro Tag, max. 210 Tage", p => Ganz(p.HomeofficeTage, 366, v => p.HomeofficeTage = v));
 
+        _f.Ueberschrift("Vermietete Immobilien (Anlage V)");
+        _f.Hinweis("Für jede vermietete Wohnung bzw. jedes Haus ein Objekt anlegen. Mieten und Kosten erfasst du als Belege der Gruppe „Vermietung“ und wählst dort das Objekt aus. Die Gebäude-AfA rechnet SteuerPilot automatisch.");
+        void NeuAufbauen() { _save.Stop(); App.Speichern(); _geladen = default; BeginInvoke(Aktualisieren); }
+        foreach (var o in pr.Mietobjekte.ToList())
+        {
+            var on = Felder.Text(270, o.Name);
+            on.Box.TextChanged += (_, _) =>
+            {
+                foreach (var b in d.Belege.Where(b => b.Objekt == o.Name && b.Kat.Gruppe == Gruppe.Vermietung)) b.Objekt = on.Text;
+                o.Name = on.Text;
+                Geaendert();
+            };
+            var weg = new FlatButton("Entfernen");
+            weg.Click += (_, _) =>
+            {
+                if (MessageBox.Show(Main, $"Objekt „{o.Name}“ entfernen? Die Belege bleiben erhalten.", "Mietobjekt", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+                pr.Mietobjekte.Remove(o);
+                NeuAufbauen();
+            };
+            _f.Zeile("Bezeichnung", on, weg);
+            var adr = Felder.Text(270, o.Adresse);
+            adr.Box.TextChanged += (_, _) => { o.Adresse = adr.Text; Geaendert(); };
+            _f.Zeile("Adresse", adr);
+            var afaInfo = Make.Label("", Ui.Small, muted: true);
+            void Afa() => afaInfo.Text = $"AfA {o.Satz:0.##} % → {Fmt.Euro(Steuer.GebaeudeAfa(o.Gebaeudekosten, o.Anschaffung, o.Satz, App.Jahr))} in {App.Jahr}";
+            var kosten = Geld(o.Gebaeudekosten, v => { o.Gebaeudekosten = v; Afa(); });
+            _f.Zeile("Gebäudekosten (ohne Grundstück) €", "Kaufpreis + Nebenkosten, nur Gebäudeanteil", kosten);
+            var kauf = Felder.Datum(o.Anschaffung);
+            kauf.Width = Ui.S(130);
+            kauf.ValueChanged += (_, _) => { o.Anschaffung = kauf.Value.Date; Afa(); Geaendert(); };
+            _f.Zeile("Gekauft / fertiggestellt am", kauf);
+            var bj = Ganz(o.Baujahr, 2100, v => { o.Baujahr = v; Afa(); });
+            _f.Zeile("Baujahr", "vor 1925: 2,5 %, ab 2023: 3 %, sonst 2 %", bj);
+            Afa();
+            _f.Zeile("", afaInfo);
+        }
+        var neu = new FlatButton("+ Mietobjekt hinzufügen");
+        neu.Click += (_, _) =>
+        {
+            pr.Mietobjekte.Add(new Mietobjekt { Name = $"Wohnung {pr.Mietobjekte.Count + 1}", Anschaffung = new DateTime(App.Jahr, 1, 1) });
+            NeuAufbauen();
+        };
+        _f.Element(neu);
+
         _f.Ueberschrift("Sonstiges");
         _f.Zeile("Geleistete Einkommensteuer-Vorauszahlungen", Geld(a.Vorauszahlungen, v => a.Vorauszahlungen = v));
         _f.Hinweis("Alles wird automatisch gespeichert. Ausgaben (Arbeitsmittel, Spenden, Versicherungen …) erfasst du als Belege.");

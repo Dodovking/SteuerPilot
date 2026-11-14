@@ -47,7 +47,14 @@ public sealed class Ablage(string root)
     public bool IstImEingang(string pfad) =>
         string.Equals(Path.GetDirectoryName(Path.GetFullPath(pfad))?.TrimEnd(Path.DirectorySeparatorChar), Eingang, StringComparison.OrdinalIgnoreCase);
 
-    public string ZielOrdner(Beleg b) => Path.Combine(Root, b.Jahr.ToString(CultureInfo.InvariantCulture), b.Kat.Ordner);
+    public string ZielOrdner(Beleg b)
+    {
+        var jahr = Path.Combine(Root, b.Jahr.ToString(CultureInfo.InvariantCulture));
+        var k = b.Kat;
+        if (k.Gruppe == Gruppe.Vermietung && !string.IsNullOrWhiteSpace(b.Objekt))
+            return Path.Combine(jahr, Kategorien.GruppenOrdner(k.Gruppe), Kategorien.SichererName(b.Objekt.Trim()), Kategorien.SichererName(k.Name));
+        return Path.Combine(jahr, k.Ordner);
+    }
 
     public static string Dateiname(Beleg b, int seite, int seiten, string endung)
     {

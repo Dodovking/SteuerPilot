@@ -29,6 +29,8 @@ public sealed class BelegForm : DialogBase
     private readonly Label _afaInfo;
     private readonly InputBox _arbeit;
     private readonly Label _arbeitLabel;
+    private readonly ComboBox _objekt;
+    private readonly Label _objektLabel;
     private readonly InputBox _notiz = new(multiline: true);
     private readonly ListBox _dateien = new() { IntegralHeight = false, BorderStyle = BorderStyle.FixedSingle, Font = Ui.Base };
     private readonly FlatButton _ocr = new("Text erkennen");
@@ -84,6 +86,13 @@ public sealed class BelegForm : DialogBase
         _arbeit = Felder.Text(140, b.Arbeitskosten?.ToString("0.00", Fmt.De) ?? "", rechts: true);
         _arbeitLabel = Make.Label("davon Arbeits-/Fahrtkosten (€)");
         AddLine(_arbeitLabel, _arbeit, "nur dieser Teil zählt bei § 35a");
+        _objekt = Felder.Auswahl(270);
+        _objekt.Items.Add("(kein bestimmtes Objekt)");
+        foreach (var n in app.Daten.Profil.Mietobjekte.Select(o => o.Name.Trim()).Append(b.Objekt.Trim()).Where(n => n.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase))
+            _objekt.Items.Add(n);
+        _objekt.SelectedIndex = Math.Max(0, _objekt.Items.IndexOf(b.Objekt.Trim()));
+        _objektLabel = Make.Label("Mietobjekt");
+        AddLine(_objektLabel, _objekt, app.Daten.Profil.Mietobjekte.Count == 0 ? "anlegen unter „Meine Angaben“" : "");
 
         AddHeading("Dateien (Fotos, Scans, PDFs)");
         _dateien.Size = new Size(w, Ui.S(96));
@@ -144,6 +153,7 @@ public sealed class BelegForm : DialogBase
         _afa.Enabled = k.Abschreibbar;
         _arbeit.Enabled = k.MitArbeitskosten;
         _arbeitLabel.Enabled = k.MitArbeitskosten;
+        _objekt.Enabled = _objektLabel.Enabled = k.Gruppe == Gruppe.Vermietung;
         AfaInfo();
     }
 
@@ -243,6 +253,7 @@ public sealed class BelegForm : DialogBase
         _b.Anteil = _anteil.Value;
         _b.AfaJahre = k.Abschreibbar ? _afa.Value : 0;
         _b.Arbeitskosten = k.MitArbeitskosten ? Fmt.Zahl(_arbeit.Text) : null;
+        _b.Objekt = k.Gruppe == Gruppe.Vermietung && _objekt.SelectedIndex > 0 ? (string)_objekt.SelectedItem! : "";
         _b.Notiz = _notiz.Text.Trim();
         NeueDateien.Clear();
         NeueDateien.AddRange(_dateien.Items.Cast<Eintrag>().Where(e => e.Rel == null).Select(e => e.Abs));

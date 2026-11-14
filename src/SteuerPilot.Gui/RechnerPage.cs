@@ -141,6 +141,32 @@ public sealed class RechnerPage : Page
             r.Fertig(); _flow.Controls.Add(r);
         }
         {
+            InputBox kosten = null!; DateTimePicker kauf = null!; NumberBox baujahr = null!;
+            var r = new Rechner("Gebäude-AfA (Vermietung)", "Abschreibung des Gebäudeanteils einer vermieteten Immobilie: vor 1925 gebaut 2,5 %, ab 2023 fertiggestellt 3 %, sonst 2 % pro Jahr – im Kaufjahr monatsgenau. Grundstück wird nicht abgeschrieben.", () =>
+            {
+                var k = Fmt.Wert(kosten); var s = Steuer.GebaeudeAfaSatz(baujahr.Value);
+                var j = kauf.Value.Year;
+                return $"Satz {s:0.##} % · volles Jahr {Fmt.Euro(Steuer.Cent(k * s / 100m))}\n{j}: {Fmt.Euro(Steuer.GebaeudeAfa(k, kauf.Value, s, j))} · {j + 1}: {Fmt.Euro(Steuer.GebaeudeAfa(k, kauf.Value, s, j + 1))}";
+            });
+            kosten = r.Feld("Gebäudekosten €", Geld("250000"));
+            kauf = r.Feld("Gekauft am", Felder.Datum(new DateTime(App.Jahr, 4, 1)));
+            baujahr = r.Feld("Baujahr", new NumberBox(1800, 2100) { Value = 1990 });
+            r.Fertig(); _flow.Controls.Add(r);
+        }
+        {
+            InputBox ortsueblich = null!, miete = null!;
+            var r = new Rechner("Verbilligte Vermietung (z. B. an Angehörige)", "Ab 66 % der ortsüblichen Miete (inkl. Nebenkosten) zählen alle Kosten voll, ab 50 % mit positiver Totalüberschussprognose, darunter nur anteilig.", () =>
+            {
+                var o = Fmt.Wert(ortsueblich); var m = Fmt.Wert(miete);
+                if (o <= 0) return "Ortsübliche Miete eingeben";
+                var q = m / o;
+                return $"{q:P0} der ortsüblichen Miete\n" + (q >= 0.66m ? "→ Kosten voll absetzbar" : q >= 0.5m ? "→ voll nur mit positiver Prognose, sonst anteilig" : $"→ Kosten nur zu {q:P0} absetzbar");
+            });
+            ortsueblich = r.Feld("Ortsübliche Warmmiete €/Monat", Geld("900"));
+            miete = r.Feld("Verlangte Warmmiete €/Monat", Geld("550"));
+            r.Fertig(); _flow.Controls.Add(r);
+        }
+        {
             InputBox betrag = null!; ComboBox satz = null!;
             var r = new Rechner("Mehrwertsteuer", "Brutto ↔ Netto umrechnen.", () =>
             {
