@@ -248,6 +248,11 @@ public sealed class BelegForm : DialogBase
                 _datum.Value = datum;
                 teile.Add("Datum " + datum.ToString("dd.MM.yyyy"));
             }
+            if (v.Notiz is string hinweis && (überschreiben || string.IsNullOrWhiteSpace(_notiz.Text)))
+            {
+                _notiz.Text = hinweis;
+                teile.Add(hinweis);
+            }
             if (v.Beschreibung is string besch && (überschreiben || string.IsNullOrWhiteSpace(_beschreibung.Text)))
             {
                 _beschreibung.Text = besch;

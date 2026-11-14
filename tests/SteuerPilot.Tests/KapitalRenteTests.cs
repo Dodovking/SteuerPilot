@@ -129,3 +129,37 @@ public class ArtTests
     public void ErkenntRechnung() =>
         Assert.Equal("Rechnung", Erkennung.Art("Maler Müller\nRechnung Nr. 123\nRechnungsbetrag 450,00\nZahlbar bis 30.06.2025"));
 }
+
+public class MehrereBonsTests
+{
+    [Fact]
+    public void SummiertAufgeklebteBons()
+    {
+        const string text = """
+            Steuerberater
+            Parkhaus Zoo Leipzig Parkhaus Zoo Leipzig Deutsche Post AG
+            08.11.23 13:20 11.05.23 12:35 19.04.2023 11:09
+            Gesamt brutto €3,00 Gesamt brutto €4,00 Bruttoumsatz +8,50 EUR
+            Bezahlung Bar €3,00 Bezahlung Bar €4,00
+            Gesamt netto €2,52 Gesamt netto €3,36
+            """;
+        var v = Erkennung.Auswerten(text, new DateTime(2024, 1, 1));
+        Assert.Equal(15.50m, v.Betrag);
+        Assert.Contains("3 Belegen", v.Notiz);
+    }
+
+    [Fact]
+    public void EinzelneRechnungMitMwstWirdNichtSummiert() =>
+        Assert.Equal(119m, Erkennung.Betrag("Rechnung vom 01.03.2025\nLeistung 15.02.2025\nSumme 100,00\nGesamtbetrag 119,00"));
+
+    [Fact]
+    public void KontoauszugOhneBetrag()
+    {
+        var v = Erkennung.Auswerten("Sparkasse Privatgirokonto 1800905900\nBuchungstag 26.04.2023\nHandwerker Reparatur 120,00\nNeuer Kontostand 9.982,33", new DateTime(2024, 1, 1));
+        Assert.Equal("Kontoauszug", v.Art);
+        Assert.Null(v.Betrag);
+    }
+
+    [Fact]
+    public void Kilometer() => Assert.Equal(156, Erkennung.Kilometer("Kilometer 3 x 52 Km = 156 Km Fahrten zum Steuerbüro"));
+}

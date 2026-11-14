@@ -47,7 +47,7 @@ public static class Aktionen
         if (f.ShowDialog(owner) != DialogResult.OK) return false;
         try
         {
-            app.Ablage.Hinzufuegen(b, f.NeueDateien, app.Settings.DateienVerschieben);
+            app.Ablage.Hinzufuegen(b, f.NeueDateien, app.Settings.OriginaleVerschieben);
             app.Daten.Belege.Add(b);
             app.Speichern();
             return true;
@@ -72,7 +72,7 @@ public static class Aktionen
             b.Datum = kopie.Datum; b.Betrag = kopie.Betrag; b.Beschreibung = kopie.Beschreibung; b.Kategorie = kopie.Kategorie;
             b.Person = kopie.Person; b.Anteil = kopie.Anteil; b.AfaJahre = kopie.AfaJahre; b.Arbeitskosten = kopie.Arbeitskosten; b.Notiz = kopie.Notiz;
             app.Ablage.Umbenennen(b);
-            if (f.NeueDateien.Count > 0) app.Ablage.Hinzufuegen(b, f.NeueDateien, app.Settings.DateienVerschieben);
+            if (f.NeueDateien.Count > 0) app.Ablage.Hinzufuegen(b, f.NeueDateien, app.Settings.OriginaleVerschieben);
         }
         catch (Exception ex)
         {
@@ -86,7 +86,7 @@ public static class Aktionen
     {
         if (belege.Count == 0) return false;
         var text = belege.Count == 1 ? $"Beleg „{belege[0].Beschreibung}“ löschen?" : $"{belege.Count} Belege löschen?";
-        if (MessageBox.Show(owner, text + "\n\nZugehörige Dateien wandern in den Ordner „_Papierkorb“ im Steuerordner.", "Löschen",
+        if (MessageBox.Show(owner, text + $"\n\nDie zugehörigen Dateien im SteuerPilot-Ordner wandern in den Papierkorb-Ordner:\n{app.Ablage.Papierkorb}\n\nOriginale in deinen eigenen Ordnern bleiben unberührt.", "Löschen",
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return false;
         foreach (var b in belege)
         {

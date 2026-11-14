@@ -202,5 +202,6 @@ public sealed class AppSettings
     public ThemeChoice Theme { get; set; } = ThemeChoice.System;
     public int Jahr { get; set; }
     public bool UpdatesPruefen { get; set; } = true;
-    public bool DateienVerschieben { get; set; } = true;
+    /// <summary>Dateien aus eigenen Ordnern verschieben statt kopieren (Eingang wird immer verschoben).</summary>
+    public bool OriginaleVerschieben { get; set; }
 }

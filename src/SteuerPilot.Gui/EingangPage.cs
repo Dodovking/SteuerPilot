@@ -143,17 +143,17 @@ public sealed class EingangPage : Page
                 var b = new Beleg
                 {
                     Datum = v.Datum!.Value.Date,
-                    Betrag = v.Betrag!.Value,
+                    Betrag = v.Betrag ?? 0,
                     Kategorie = k.Key,
                     Beschreibung = string.IsNullOrWhiteSpace(v.Beschreibung) ? k.Name : v.Beschreibung!,
                     Kapital = k.Wirkung == Wirkung.Kapital ? v.Kapital : null,
-                    Notiz = "Automatisch erkannt – bitte prüfen.",
+                    Notiz = "Automatisch erkannt – bitte prüfen." + (v.Notiz != null ? " " + v.Notiz + "." : ""),
                 };
                 if (k.Gruppe == Gruppe.Kapital) App.Daten.Profil.HatKapital = true;
                 if (Belegerkennung.AngabenUebernehmen(App, v, b) is string info) uebernommen.Add(info);
                 try
                 {
-                    App.Ablage.Hinzufuegen(b, [f], App.Settings.DateienVerschieben);
+                    App.Ablage.Hinzufuegen(b, [f], App.Settings.OriginaleVerschieben);
                     App.Daten.Belege.Add(b);
                     ok++;
                 }

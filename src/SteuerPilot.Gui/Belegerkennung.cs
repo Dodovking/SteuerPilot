@@ -8,7 +8,7 @@ public static class Belegerkennung
 {
     public sealed record Ergebnis(string Text, Vorschlag Vorschlag, string? Fehler)
     {
-        public bool Vollstaendig => Vorschlag.Betrag is > 0 && Vorschlag.Datum != null;
+        public bool Vollstaendig => Vorschlag.Datum != null && (Vorschlag.Betrag is > 0 || (Vorschlag.Art is "Kontoauszug" or "Vertrag" or "Versicherung" or "Wertpapierabrechnung" && Kategorien.Get(Vorschlag.Kategorie).Wirkung == Wirkung.Keine));
     }
 
     private static readonly ConcurrentDictionary<(string, DateTime), Task<Ergebnis>> Cache = new();

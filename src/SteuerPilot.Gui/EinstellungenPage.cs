@@ -28,8 +28,8 @@ public sealed class EinstellungenPage : Page
         _f.Zeile("", oeffnen, aendern);
 
         _f.Ueberschrift("Dateien");
-        var verschieben = new ToggleSwitch("Dateien beim Hinzufügen verschieben statt kopieren") { Checked = s.DateienVerschieben };
-        verschieben.CheckedChanged += (_, _) => { s.DateienVerschieben = verschieben.Checked; App.SettingsSpeichern(); };
+        var verschieben = new ToggleSwitch("Dateien aus eigenen Ordnern verschieben statt kopieren (Original verschwindet dort)") { Checked = s.OriginaleVerschieben };
+        verschieben.CheckedChanged += (_, _) => { s.OriginaleVerschieben = verschieben.Checked; App.SettingsSpeichern(); };
         _f.Element(verschieben);
         _f.Hinweis("Gilt für Dateien von außerhalb (z. B. Downloads). Dateien aus dem Eingang werden immer in den richtigen Ordner verschoben.");
 

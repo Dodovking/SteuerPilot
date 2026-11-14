@@ -3,11 +3,13 @@ using System.Text.RegularExpressions;
 
 namespace SteuerPilot.Core;
 
-public sealed record Vorschlag(decimal? Betrag, DateTime? Datum, string? Kategorie, string? Beschreibung, Kapitalwerte? Kapital = null, PersonAngaben? Angaben = null, string? Art = null);
+public sealed record Vorschlag(decimal? Betrag, DateTime? Datum, string? Kategorie, string? Beschreibung, Kapitalwerte? Kapital = null, PersonAngaben? Angaben = null, string? Art = null, string? Notiz = null);
 
 /// <summary>Liest Betrag, Datum und Kategorie aus dem per Texterkennung gelesenen Belegtext.</summary>
 public static partial class Erkennung
 {
+    private static readonly CultureInfo De = CultureInfo.GetCultureInfo("de-DE");
+
     private static readonly string[] SummenWorte =
         ["gesamtbetrag", "rechnungsbetrag", "endbetrag", "zu zahlen", "zahlbetrag", "gesamtsumme", "summe", "gesamt", "total", "brutto", "betrag", " bar", "ec-karte", "girocard", "kartenzahlung"];
 
@@ -42,7 +44,8 @@ public static partial class Erkennung
         if (string.IsNullOrWhiteSpace(text)) return new Vorschlag(null, null, null, null);
         var h = heute ?? DateTime.Today;
         var kat = Kategorie(text);
-        var betrag = Betrag(text);
+        var (betrag, einzeln) = Betraege(text);
+        var notiz = einzeln.Count > 1 ? $"Summe aus {einzeln.Count} Belegen: {string.Join(" + ", einzeln.Select(x => x.ToString("N2", De)))} €" : null;
         var datum = Datum(text, h);
         Kapitalwerte? kap = null;
         PersonAngaben? angaben = null;
@@ -74,10 +77,22 @@ public static partial class Erkennung
             if (sj != null) datum = new DateTime(sj.Value, 12, 31);
         }
         var art = Art(text);
+        if (art == "Kontoauszug")
+        {
+            kat = "kap-konto";
+            betrag = null;
+            notiz = null;
+        }
+        else if (Kilometer(text) is int km && k.Wirkung != Wirkung.Kapital)
+        {
+            var kosten = km * 0.30m;
+            betrag = (betrag ?? 0) + kosten;
+            notiz = (notiz == null ? "" : notiz + "; ") + $"{km} km × 0,30 € = {kosten.ToString("N2", De)} € Fahrtkosten hinzugerechnet";
+        }
         var beschreibung = Beschreibung(text);
         if (art != null) beschreibung = beschreibung == null ? art : $"{art} – {beschreibung}";
         if (beschreibung?.Length > 60) beschreibung = beschreibung[..60].Trim();
-        return new Vorschlag(betrag, datum, kat, beschreibung, kap, angaben, art);
+        return new Vorschlag(betrag, datum, kat, beschreibung, kap, angaben, art, notiz);
     }
 
     private static readonly (string Art, string[] Worte)[] Arten =
@@ -87,7 +102,7 @@ public static partial class Erkennung
         ("Rentenbescheinigung", ["rentenbezugsmitteilung", "rentenanpassung", "meldung an die finanzverwaltung", "rentenbetrag"]),
         ("Bankbescheinigung", ["jahressteuerbescheinigung", "steuerbescheinigung", "verlustbescheinigung", "kapitalertragsteuer"]),
         ("Spendenbescheinigung", ["zuwendungsbestatigung", "spendenbescheinigung", "spendenquittung"]),
-        ("Kontoauszug", ["kontoauszug", "depotauszug", "alter kontostand", "neuer kontostand", "umsatzubersicht"]),
+        ("Kontoauszug", ["kontoauszug", "depotauszug", "kontostand", "girokonto", "buchungstag", "umsatzubersicht", "saldo", "valuta"]),
         ("Wertpapierabrechnung", ["wertpapierabrechnung", "sparplan", "orderabrechnung", "ausfuhrung"]),
         ("Versicherung", ["versicherungsschein", "beitragsrechnung", "beitragsbescheinigung", "police"]),
         ("Vertrag", ["vertrag", "vereinbarung zwischen"]),
@@ -192,12 +207,18 @@ public static partial class Erkennung
         return a.Rente > 0 ? a : null;
     }
 
-    public static decimal? Betrag(string text)
+    public static decimal? Betrag(string text) => Betraege(text).Betrag;
+
+    private static readonly string[] Endsummen = ["gesamtbetrag", "rechnungsbetrag", "endbetrag", "zu zahlen", "zahlbetrag", "gesamtsumme", "summe", "gesamt", "total", "brutto"];
+
+    /// <summary>Endbetrag; liegen mehrere Bons auf einer Seite (z. B. aufgeklebt), wird ihre Summe gebildet.</summary>
+    public static (decimal? Betrag, List<decimal> Einzeln) Betraege(string text)
     {
         var lines = text.Split('\n');
         decimal? best = null;
         int bestRang = int.MaxValue;
         decimal max = 0;
+        var summen = new List<decimal>();
         foreach (var raw in lines)
         {
             var line = raw.ToLowerInvariant();
@@ -213,8 +234,41 @@ public static partial class Erkennung
                 best = wert;
                 bestRang = rang;
             }
+            // Nebeneinanderliegende Bons landen in einer Zeile: jede Endsumme einzeln nehmen.
+            if (line.Contains("zwischensumme") || line.Contains("teilsumme")) continue;
+            var starts = Endsummen.SelectMany(w => AlleStellen(line, w)).OrderBy(i => i).ToList();
+            starts = starts.Where((p, i) => i == 0 || p - starts[i - 1] > 12).ToList();
+            for (int i = 0; i < starts.Count; i++)
+            {
+                var stueck = line[starts[i]..(i + 1 < starts.Count ? starts[i + 1] : line.Length)];
+                var m = BetragRegex().Match(stueck);
+                if (m.Success && Parse(m) is decimal v and > 0) summen.Add(v);
+            }
         }
-        return best ?? (max > 0 ? max : null);
+        var verschieden = summen.Distinct().ToList();
+        int daten = DatumRegex().Matches(text).Select(m => m.Value).Distinct().Count();
+        bool mwst = verschieden.Any(x => verschieden.Any(y => y != x && (Math.Abs(y * 1.19m - x) < 0.02m || Math.Abs(y * 1.07m - x) < 0.02m)));
+        bool teilsummen = verschieden.Count > 2 && verschieden.Max() == verschieden.Sum() - verschieden.Max();
+        if (verschieden.Count >= 2 && daten >= 2 && !mwst && !teilsummen)
+            return (verschieden.Sum(), verschieden);
+        return (best ?? (max > 0 ? max : null), []);
+    }
+
+    private static IEnumerable<int> AlleStellen(string s, string w)
+    {
+        for (int i = s.IndexOf(w, StringComparison.Ordinal); i >= 0; i = s.IndexOf(w, i + w.Length, StringComparison.Ordinal)) yield return i;
+    }
+
+    [GeneratedRegex(@"(?<!\d)(\d{1,4})\s?km\b", RegexOptions.IgnoreCase)]
+    private static partial Regex KmRegex();
+
+    /// <summary>Gefahrene Kilometer (z. B. handschriftlich „3 x 52 km = 156 km Fahrten“).</summary>
+    public static int? Kilometer(string text)
+    {
+        var t = text.ToLowerInvariant();
+        if (!t.Contains("fahrt") && !t.Contains("kilomet")) return null;
+        var km = KmRegex().Matches(text).Select(m => int.Parse(m.Groups[1].Value)).Where(k => k > 0).ToList();
+        return km.Count == 0 ? null : km.Max();
     }
 
     private static decimal? Parse(Match m)

@@ -98,7 +98,7 @@ public static class Kategorien
         new("gewerkschaft", "Gewerkschaft / Berufsverband", Gruppe.Werbungskosten, Wirkung.Werbungskosten, "Anlage N – Beiträge zu Berufsverbänden", "", ["gewerkschaft", "verdi", "ig metall", "berufsverband", "mitgliedsbeitrag"]),
         new("kontofuehrung", "Kontoführung", Gruppe.Werbungskosten, Wirkung.Werbungskosten, "Anlage N – Weitere Werbungskosten",
             "Pauschal 16 € im Jahr werden ohne Beleg anerkannt.", ["kontoführung", "kontoführungsgebühr"]),
-        new("steuerberatung", "Steuerberatung / Steuer-Software", Gruppe.Werbungskosten, Wirkung.Werbungskosten, "Anlage N – Weitere Werbungskosten", "", ["steuerberater", "lohnsteuerhilfe", "steuersoftware", "wiso", "smartsteuer"]),
+        new("steuerberatung", "Steuerberatung / Steuer-Software", Gruppe.Werbungskosten, Wirkung.Werbungskosten, "Anlage N – Weitere Werbungskosten", "", ["steuerberater", "steuerbüro", "steuerberatung", "lohnsteuerhilfe", "steuersoftware", "wiso", "smartsteuer"]),
         new("sonstige-werbungskosten", "Sonstige Werbungskosten", Gruppe.Werbungskosten, Wirkung.Werbungskosten, "Anlage N – Weitere Werbungskosten", "", []),
 
         // Vorsorge

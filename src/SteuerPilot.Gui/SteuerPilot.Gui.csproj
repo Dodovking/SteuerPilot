@@ -14,7 +14,7 @@
     <ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode>
     <Product>SteuerPilot</Product>
     <Company>Dominik</Company>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <SatelliteResourceLanguages>de</SatelliteResourceLanguages>
   </PropertyGroup>
 
