@@ -105,7 +105,9 @@ public sealed class BelegForm : DialogBase
         var scan = new FlatButton("Scannen");
         var weg = new FlatButton("Entfernen", ButtonKind.Ghost);
         var oeffnen = new FlatButton("Öffnen", ButtonKind.Ghost);
-        AddLine(plus, scan, _ocr, weg, oeffnen);
+        var zeigen = new FlatButton("Text anzeigen", ButtonKind.Ghost);
+        zeigen.Click += async (_, _) => { if ((_dateien.SelectedItem as Eintrag)?.Abs is string p) await Aktionen.TextZeigen(this, p); };
+        AddLine(plus, scan, _ocr, zeigen, weg, oeffnen);
         _ocrInfo = Make.Label("", Ui.Small, muted: true, width: w);
         Place(_ocrInfo, Ui.S(34));
 
@@ -123,7 +125,13 @@ public sealed class BelegForm : DialogBase
         string[] namen = ["Kapitalerträge €", "davon Aktiengewinne €", "Kapitalertragsteuer €", "Soli €", "Kirchensteuer €", "Verluste Aktien €", "Verluste sonstige €"];
         for (int i = 0; i < _kap.Length; i += 2)
         {
-            static Label Fest(string t, int breite) { var l = Make.Label(t); l.AutoSize = false; l.Size = new Size(Ui.S(breite), l.PreferredHeight); return l; }
+            static Panel Fest(string t, int breite)
+            {
+                var l = Make.Label(t);
+                var p = new Panel { Size = new Size(Ui.S(breite), l.PreferredHeight) };
+                p.Controls.Add(l);
+                return p;
+            }
             var parts = new List<object> { Fest(namen[i], 170), _kap[i] };
             if (i + 1 < _kap.Length) parts.AddRange([Fest("   " + namen[i + 1], 190), _kap[i + 1]]);
             int vor = Body.Controls.Count;

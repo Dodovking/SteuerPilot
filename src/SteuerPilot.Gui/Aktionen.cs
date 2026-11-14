@@ -5,6 +5,36 @@ namespace SteuerPilot.Gui;
 /// <summary>Abläufe, die von mehreren Seiten aus gestartet werden.</summary>
 public static class Aktionen
 {
+    /// <summary>Zeigt, was die Texterkennung aus einer Datei gelesen und erkannt hat.</summary>
+    public static async Task TextZeigen(IWin32Window owner, string pfad)
+    {
+        var e = await Belegerkennung.Erkennen(pfad);
+        var v = e.Vorschlag;
+        var kopf = e.Fehler != null
+            ? "Texterkennung nicht möglich: " + e.Fehler
+            : $"Dokumentart: {v.Art ?? "–"}\r\nBetrag: {(v.Betrag is decimal b ? Fmt.Euro(b) : "–")}\r\nDatum: {v.Datum?.ToString("dd.MM.yyyy") ?? "–"}\r\n" +
+              $"Kategorie: {(v.Kategorie != null ? Kategorien.Get(v.Kategorie).Name : "–")}\r\nBeschreibung: {v.Beschreibung ?? "–"}";
+        var text = string.IsNullOrWhiteSpace(e.Text) ? "(kein Text gefunden)" : e.Text.Replace("\r", "").Replace("\n", "\r\n");
+        using var f = new Form
+        {
+            Text = "Gelesener Text – " + Path.GetFileName(pfad),
+            Size = new Size(Ui.S(720), Ui.S(640)),
+            StartPosition = FormStartPosition.CenterParent,
+            Font = Ui.Base,
+            Icon = Ui.AppIcon(),
+            ShowInTaskbar = false,
+        };
+        var box = new TextBox
+        {
+            Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Both, WordWrap = false, Dock = DockStyle.Fill,
+            Font = new Font("Consolas", 10f), Text = kopf + "\r\n\r\n──────── Gelesener Text ────────\r\n" + text,
+        };
+        f.Controls.Add(box);
+        Theme.Apply(f);
+        box.Select(0, 0);
+        f.ShowDialog(owner);
+    }
+
     public static void Fehler(IWin32Window owner, string was, Exception ex) =>
         MessageBox.Show(owner, was + "\n\n" + ex.Message, "SteuerPilot", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 

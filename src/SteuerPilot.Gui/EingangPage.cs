@@ -21,7 +21,9 @@ public sealed class EingangPage : Page
         var scan = new FlatButton("Scannen");
         var import = new FlatButton("Dateien hinzufügen");
         var ordner = new FlatButton("Ordner öffnen", ButtonKind.Ghost);
-        var top = Leiste(_erfassen, _auto, _zusammen, scan, import, ordner, _loeschen);
+        var lesen = new FlatButton("Gelesenen Text anzeigen", ButtonKind.Ghost);
+        lesen.Click += async (_, _) => { if (Ausgewaehlt().FirstOrDefault() is string f) await Aktionen.TextZeigen(Main, f); };
+        var top = Leiste(_erfassen, _auto, _zusammen, scan, import, lesen, ordner, _loeschen);
         var infoPanel = new Panel { Dock = DockStyle.Top, Height = Ui.S(30) };
         infoPanel.Controls.Add(_info);
         infoPanel.Controls.Add(_ocrInstall);
