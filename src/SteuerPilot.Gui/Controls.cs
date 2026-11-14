@@ -19,6 +19,9 @@ public sealed class FlatButton : Button, IThemed
     [DefaultValue(ButtonKind.Secondary)]
     public ButtonKind Kind { get; set; } = ButtonKind.Secondary;
 
+    [DefaultValue(false)]
+    public bool AlignLeft { get; set; }
+
     public FlatButton(string text, ButtonKind kind = ButtonKind.Secondary)
     {
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.SupportsTransparentBackColor, true);
@@ -81,7 +84,8 @@ public sealed class FlatButton : Button, IThemed
             using var pen = new Pen(Kind == ButtonKind.Primary ? p.AccentText : p.Accent) { DashStyle = DashStyle.Dot };
             g.DrawPath(pen, path);
         }
-        TextRenderer.DrawText(g, Text, Font, r, text, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+        var tr = AlignLeft ? new Rectangle(r.X + Ui.S(14), r.Y, r.Width - Ui.S(14), r.Height) : r;
+        TextRenderer.DrawText(g, Text, Font, tr, text, (AlignLeft ? TextFormatFlags.Left : TextFormatFlags.HorizontalCenter) | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
     }
 }
 

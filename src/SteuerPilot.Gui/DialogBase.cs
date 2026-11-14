@@ -9,7 +9,8 @@ public class DialogBase : Form
     protected readonly FlatButton CancelBtn = new("Abbrechen");
     protected int Y;
     protected int Left0 => Ui.S(28);
-    protected int ContentWidth => ClientSize.Width - Ui.S(56) - SystemInformation.VerticalScrollBarWidth;
+    protected int ExtraRight;
+    protected int ContentWidth => ClientSize.Width - Ui.S(56) - SystemInformation.VerticalScrollBarWidth - ExtraRight;
 
     public DialogBase(string title, string okText, int width, int height)
     {
