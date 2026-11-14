@@ -114,6 +114,9 @@ public sealed class Jahresangaben
     public PersonAngaben Ich { get; set; } = new();
     public PersonAngaben Partner { get; set; } = new();
     public decimal Vorauszahlungen { get; set; }
+
+    /// <summary>Bereiche, die als erledigt markiert wurden (für den Fortschritt).</summary>
+    public List<string> Erledigt { get; set; } = [];
 }
 
 /// <summary>Vermietete Wohnung/Haus (Anlage V).</summary>
@@ -156,6 +159,7 @@ public sealed class Profil
     public bool HatRente { get; set; }
     public bool HatVermietung { get; set; }
     public bool HatKapital { get; set; }
+    public bool HatSelbststaendig { get; set; }
 
     [JsonIgnore]
     public decimal SparerPauschbetrag => Splitting ? 2000m : 1000m;
@@ -202,6 +206,7 @@ public sealed class AppSettings
     public ThemeChoice Theme { get; set; } = ThemeChoice.System;
     public int Jahr { get; set; }
     public bool UpdatesPruefen { get; set; } = true;
+    public bool DesignV2 { get; set; }
     /// <summary>Dateien aus eigenen Ordnern verschieben statt kopieren (Eingang wird immer verschoben).</summary>
     public bool OriginaleVerschieben { get; set; }
 }

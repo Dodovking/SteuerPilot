@@ -39,9 +39,10 @@ public static class Aktionen
         MessageBox.Show(owner, was + "\n\n" + ex.Message, "SteuerPilot", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
     /// <summary>Neuen Beleg anlegen, optional mit Dateien (aus dem Eingang oder von irgendwo).</summary>
-    public static bool NeuerBeleg(IWin32Window owner, App app, IReadOnlyList<string>? dateien = null, bool ocr = false)
+    public static bool NeuerBeleg(IWin32Window owner, App app, IReadOnlyList<string>? dateien = null, bool ocr = false, string? kategorie = null)
     {
         var b = new Beleg();
+        if (kategorie != null) b.Kategorie = kategorie;
         if (app.Jahr != DateTime.Today.Year) b.Datum = new DateTime(app.Jahr, 12, 31);
         using var f = new BelegForm(app, b, dateien ?? [], neu: true, autoOcr: ocr);
         if (f.ShowDialog(owner) != DialogResult.OK) return false;

@@ -17,9 +17,10 @@ public sealed class MainForm : Form
     private readonly Panel _nav = new() { Dock = DockStyle.Left, Tag = "surface" };
     private readonly Label _version = Make.Label("", Ui.Small, muted: true);
     private readonly Panel _content = new() { Dock = DockStyle.Fill };
-    private readonly List<(FlatButton Button, Page Page)> _pages = [];
+    private readonly List<(NavButton Button, Page Page)> _pages = [];
+    private readonly InputBox _suche = Felder.Text(300);
     private Page? _current;
-    private FlatButton? _eingangButton;
+    private NavButton? _eingangButton;
     private FileSystemWatcher? _watcher;
     private string _watchedRoot = "";
     private readonly System.Windows.Forms.Timer _eingangTimer = new() { Interval = 700 };
@@ -58,14 +59,14 @@ public sealed class MainForm : Form
         Controls.Add(_banner);
         Controls.Add(_header);
 
-        AddPage("Übersicht", new UebersichtPage(this, app));
-        AddPage("Belege", new BelegePage(this, app));
-        _eingangButton = AddPage("Eingang", new EingangPage(this, app));
-        AddPage("Meine Angaben", new AngabenPage(this, app));
-        AddPage("Steuer-Schätzung", new SchaetzungPage(this, app));
-        AddPage("Rechner", new RechnerPage(this, app));
-        AddPage("Export & Sicherung", new ExportPage(this, app));
-        AddPage("Einstellungen", new EinstellungenPage(this, app));
+        AddPage(Glyph.Home, "Übersicht", new UebersichtPage(this, app));
+        foreach (var i in Bereiche.Alle) AddPage(i.Glyph, i.Titel, new BereichPage(this, app, i.B));
+        AddPage(Glyph.Folder, "Belegverwaltung", new BelegePage(this, app));
+        _eingangButton = AddPage(Glyph.Mail, "Eingang", new EingangPage(this, app));
+        AddPage(Glyph.Check, "Steuer-Check", new SchaetzungPage(this, app));
+        AddPage(Glyph.Calc, "Rechner", new RechnerPage(this, app));
+        AddPage(Glyph.Download, "Berichte & Export", new ExportPage(this, app));
+        AddPage(Glyph.Settings, "Einstellungen", new EinstellungenPage(this, app));
         BuildNav();
 
         _app.Changed += () => { if (!IsDisposed) { FillYears(); WatchEingang(); UpdateHeader(); _current?.Aktualisieren(); } };
@@ -103,9 +104,9 @@ public sealed class MainForm : Form
         updateTimer.Start();
     }
 
-    private FlatButton AddPage(string name, Page page)
+    private NavButton AddPage(string glyph, string name, Page page)
     {
-        var b = new FlatButton(name, ButtonKind.Ghost) { AlignLeft = true, Width = Ui.S(196), Height = Ui.S(38) };
+        var b = new NavButton(glyph, name);
         b.Click += (_, _) => Show(page);
         page.Visible = false;
         _content.Controls.Add(page);
@@ -118,12 +119,26 @@ public sealed class MainForm : Form
         _current = page;
         foreach (var (b, p) in _pages)
         {
-            b.Kind = p == page ? ButtonKind.Secondary : ButtonKind.Ghost;
-            b.Font = p == page ? Ui.Bold : Ui.Base;
+            b.Ausgewaehlt = p == page;
             b.Invalidate();
             p.Visible = p == page;
         }
         page.Aktualisieren();
+    }
+
+    public void ShowBereich(Bereich b) => Show(_pages.Select(x => x.Page).OfType<BereichPage>().First(p => p.Bereich == b));
+
+    private void Suchen()
+    {
+        var q = _suche.Text.Trim().ToLowerInvariant();
+        if (q.Length < 2) return;
+        var treffer = _pages.FirstOrDefault(x => x.Button.Text.ToLowerInvariant().Contains(q));
+        if (treffer.Page != null) { Show(treffer.Page); return; }
+        var kat = Kategorien.Alle.FirstOrDefault(k => k.Name.ToLowerInvariant().Contains(q) || k.Stichworte.Any(w => w.Contains(q)));
+        var bereich = kat == null ? (Bereiche.Info?)null : Bereiche.Alle.FirstOrDefault(i => Bereiche.Gruppen(i.B).Contains(kat.Gruppe));
+        if (bereich != null) { ShowBereich(bereich.B); return; }
+        var seite = Show<BelegePage>();
+        seite.Suchen(_suche.Text.Trim());
     }
 
     public T Show<T>() where T : Page
@@ -135,24 +150,31 @@ public sealed class MainForm : Form
 
     private void BuildNav()
     {
-        _nav.Width = Ui.S(220);
+        _nav.Width = Ui.S(232);
+        _nav.AutoScroll = true;
         _nav.Padding = new Padding(Ui.S(12), Ui.S(14), Ui.S(12), Ui.S(12));
+        var logoIcon = Symbol.Make(Glyph.Chart, 18f, Color.FromArgb(56, 189, 248));
+        var logo = Make.Label("SteuerPilot", new Font("Segoe UI Semibold", 15f));
+        _nav.Controls.AddRange([logoIcon, logo]);
         foreach (var (b, _) in _pages) _nav.Controls.Add(b);
         _nav.Controls.Add(_version);
-        var update = new FlatButton("Nach Updates suchen") { Width = Ui.S(196) };
+        var update = new FlatButton("Nach Updates suchen") { Width = Ui.S(208) };
         update.Click += (_, _) => OpenUpdate();
         _nav.Controls.Add(update);
         _version.Text = $"Version {Updater.CurrentVersion.ToString(3)}\nOhne Gewähr – keine Steuerberatung";
         _nav.Layout += (_, _) =>
         {
-            int y = Ui.S(14);
-            foreach (var (b, _) in _pages)
+            logoIcon.Location = new Point(Ui.S(16), Ui.S(16));
+            logo.Location = new Point(Ui.S(50), Ui.S(14));
+            int y = Ui.S(62);
+            foreach (var (b, p) in _pages)
             {
-                b.Location = new Point(Ui.S(12), y);
-                y += b.Height + Ui.S(4);
+                if (p is BelegePage) y += Ui.S(14);
+                b.Location = new Point(Ui.S(12), y + _nav.AutoScrollPosition.Y);
+                y += b.Height + Ui.S(2);
             }
-            _version.Location = new Point(Ui.S(20), _nav.Height - _version.PreferredHeight - Ui.S(14));
-            update.Location = new Point(Ui.S(12), Math.Max(y + Ui.S(12), _version.Top - update.Height - Ui.S(10)));
+            update.Location = new Point(Ui.S(12), y + Ui.S(12) + _nav.AutoScrollPosition.Y);
+            _version.Location = new Point(Ui.S(20), update.Bottom + Ui.S(10));
         };
         _nav.Paint += (_, e) =>
         {
@@ -163,12 +185,14 @@ public sealed class MainForm : Form
 
     private void BuildHeader()
     {
-        _header.Height = Ui.S(72);
-        _header.Controls.AddRange([_title, _subtitle, _jahrLabel, _jahr, _neu, _scan, _import, _ordner]);
+        _header.Height = Ui.S(64);
+        _header.Controls.AddRange([_suche, _jahrLabel, _jahr, _neu, _scan, _import, _ordner]);
+        _suche.Box.PlaceholderText = "Suche nach Themen … (z. B. Rente, Miete, Dividenden)";
+        _suche.Box.KeyDown += (_, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; Suchen(); } };
         _header.Layout += (_, _) =>
         {
-            _title.Location = new Point(Ui.S(22), Ui.S(10));
-            _subtitle.Location = new Point(Ui.S(24), _title.Bottom + Ui.S(1));
+            _suche.Width = Math.Max(Ui.S(240), Math.Min(Ui.S(420), _header.Width - Ui.S(720)));
+            _suche.Location = new Point(Ui.S(22), (_header.Height - _suche.Height) / 2);
             int x = _header.Width - Ui.S(22);
             foreach (var b in new Control[] { _ordner, _import, _scan, _neu })
             {
@@ -257,6 +281,7 @@ public sealed class MainForm : Form
         int n = 0;
         try { n = _app.Ablage.EingangDateien().Count; } catch { }
         _eingangButton.Text = n > 0 ? $"Eingang  ({n} neu)" : "Eingang";
+        _eingangButton.Invalidate();
         UpdateHeader();
     }
 

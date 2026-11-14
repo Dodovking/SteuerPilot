@@ -73,6 +73,8 @@ public sealed class BelegePage : Page
 
     public void Suchen() => _suche.Box.Focus();
 
+    public void Suchen(string text) { _suche.Text = text; _suche.Box.Focus(); }
+
     public void FilterAuf(Gruppe g) => _bereich.SelectedIndex = (int)g + 1;
 
     private List<Beleg> Ausgewaehlt() =>

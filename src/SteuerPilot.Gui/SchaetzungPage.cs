@@ -12,7 +12,7 @@ public sealed class SchaetzungPage : Page
     private readonly DataGridView _grid = Tabelle();
     private readonly Label _hinweise = Make.Label("", Ui.Small, muted: true);
 
-    public override string Titel => "Steuer-Schätzung";
+    public override string Titel => "Steuer-Check";
 
     public SchaetzungPage(MainForm main, App app) : base(main, app)
     {

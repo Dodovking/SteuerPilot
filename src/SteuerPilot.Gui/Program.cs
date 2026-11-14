@@ -31,6 +31,12 @@ internal static class Program
             MessageBox.Show("Ein unerwarteter Fehler ist aufgetreten:\n\n" + e.Exception.Message, "SteuerPilot", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
         var settings = Speicher.LadeEinstellungen();
+        if (!settings.DesignV2)
+        {
+            settings.Theme = ThemeChoice.Dunkel;
+            settings.DesignV2 = true;
+            try { Speicher.SpeichereEinstellungen(settings); } catch { }
+        }
         Theme.Set(settings.Theme);
         App app;
         try

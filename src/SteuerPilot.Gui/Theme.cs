@@ -31,11 +31,11 @@ public static class Theme
         Input: Color.White, Selection: Color.FromArgb(219, 234, 254));
 
     public static readonly Palette DarkPalette = new(true,
-        Back: Color.FromArgb(17, 19, 24), Surface: Color.FromArgb(27, 30, 37), SurfaceHover: Color.FromArgb(38, 42, 52),
-        Border: Color.FromArgb(48, 53, 66), Text: Color.FromArgb(229, 231, 235), Muted: Color.FromArgb(156, 163, 175),
-        Accent: Color.FromArgb(59, 130, 246), AccentHover: Color.FromArgb(96, 155, 250), AccentText: Color.White,
-        Success: Color.FromArgb(74, 222, 128), Warning: Color.FromArgb(251, 191, 36), Danger: Color.FromArgb(248, 113, 113),
-        Input: Color.FromArgb(22, 25, 31), Selection: Color.FromArgb(30, 58, 110));
+        Back: Color.FromArgb(9, 15, 30), Surface: Color.FromArgb(17, 27, 50), SurfaceHover: Color.FromArgb(27, 41, 74),
+        Border: Color.FromArgb(36, 52, 88), Text: Color.FromArgb(238, 242, 250), Muted: Color.FromArgb(150, 165, 196),
+        Accent: Color.FromArgb(33, 118, 255), AccentHover: Color.FromArgb(70, 142, 255), AccentText: Color.White,
+        Success: Color.FromArgb(34, 211, 153), Warning: Color.FromArgb(251, 191, 36), Danger: Color.FromArgb(248, 113, 113),
+        Input: Color.FromArgb(11, 19, 38), Selection: Color.FromArgb(28, 60, 128));
 
     public static Palette P { get; private set; } = Light;
     public static ThemeChoice Choice { get; private set; } = ThemeChoice.System;
@@ -227,6 +227,22 @@ public static class Ui
     public static readonly Font Title = new("Segoe UI Semibold", 15f);
     public static readonly Font CardTitle = new("Segoe UI Semibold", 11.5f);
     public static readonly Font Section = new("Segoe UI Semibold", 10.5f);
+    public static readonly Font Hero = new("Segoe UI Semibold", 24f);
+    public static readonly Font Big = new("Segoe UI Semibold", 28f);
+    public static readonly Font Nav = Font(9.75f);
+
+    private static string? _iconFamily;
+
+    /// <summary>Windows-Symbolschrift (Segoe Fluent Icons unter Windows 11, sonst Segoe MDL2 Assets).</summary>
+    public static Font Icon(float size)
+    {
+        if (_iconFamily == null)
+        {
+            var namen = System.Drawing.FontFamily.Families.Select(f => f.Name).ToHashSet();
+            _iconFamily = namen.Contains("Segoe Fluent Icons") ? "Segoe Fluent Icons" : namen.Contains("Segoe MDL2 Assets") ? "Segoe MDL2 Assets" : "Segoe UI Symbol";
+        }
+        return new Font(_iconFamily, size);
+    }
 
     public static System.Drawing.Drawing2D.GraphicsPath Rounded(Rectangle r, int radius)
     {
