@@ -45,8 +45,9 @@ public sealed class MainForm : Form
         Font = Ui.Base;
         AutoScaleMode = AutoScaleMode.None;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(Ui.S(1240), Ui.S(780));
-        MinimumSize = new Size(Ui.S(1040), Ui.S(620));
+        var platz = Screen.PrimaryScreen?.WorkingArea.Size ?? new Size(int.MaxValue, int.MaxValue);
+        ClientSize = new Size(Math.Min(Ui.S(1240), platz.Width - Ui.S(40)), Math.Min(Ui.S(780), platz.Height - Ui.S(60)));
+        MinimumSize = new Size(Math.Min(Ui.S(1040), platz.Width), Math.Min(Ui.S(620), platz.Height));
         AllowDrop = true;
         KeyPreview = true;
 

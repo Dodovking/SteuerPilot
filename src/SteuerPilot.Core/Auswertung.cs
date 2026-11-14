@@ -177,6 +177,13 @@ public static class Auswertung
 
         if (personen.All(p => Von(angaben, p).Bruttolohn <= 0) && gewinn == 0 && vuv == 0)
             hinweise.Insert(0, "Trag zuerst die Werte deiner Lohnsteuerbescheinigung ein, sonst ist die Schätzung nicht aussagekräftig.");
+        foreach (var p in personen)
+        {
+            var a = Von(angaben, p);
+            if (a.Bruttolohn > 0 && a.RentenversicherungAN + a.KrankenversicherungAN + a.PflegeversicherungAN == 0
+                && Summe(posten, Wirkung.Altersvorsorge) + Summe(posten, Wirkung.KrankenPflegeBasis) == 0)
+                hinweise.Insert(0, $"{(p == Person.Ich ? "Du" : "Partner")}: Renten-, Kranken- und Pflegeversicherung fehlen – trag sie unter „Meine Angaben“ aus der Lohnsteuerbescheinigung (Zeilen 23–26) ein, sonst fällt die Schätzung viel zu ungünstig aus.");
+        }
         if (profil.Kinder > 0) hinweise.Add("Kinderfreibeträge sind nicht eingerechnet – das Finanzamt prüft automatisch, ob Kindergeld oder Freibetrag günstiger ist.");
         if (posten.Any(p => p.Kat.Gruppe == Gruppe.Haushaltsnah && p.Beleg.Arbeitskosten is null or 0))
             hinweise.Add("Bei Handwerker-/Dienstleistungsrechnungen zählen nur die Arbeitskosten – trag sie im Beleg ein, sonst wird der ganze Betrag angesetzt.");

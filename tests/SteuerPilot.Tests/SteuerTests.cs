@@ -126,4 +126,14 @@ public class AuswertungTests
         Assert.Contains(s.Zeilen, z => z.Text.Contains("Splitting"));
         Assert.True(s.Einkommensteuer < Auswertung.Schaetzen(Beispiel(), 2025).Einkommensteuer);
     }
+
+    [Fact]
+    public void HinweisWennSozialversicherungFehlt()
+    {
+        var d = new SteuerDaten();
+        d.Angaben(2025).Ich.Bruttolohn = 45000;
+        Assert.Contains(Auswertung.Schaetzen(d, 2025).Hinweise, h => h.Contains("Lohnsteuerbescheinigung (Zeilen 23–26)"));
+        d.Angaben(2025).Ich.RentenversicherungAN = 4185;
+        Assert.DoesNotContain(Auswertung.Schaetzen(d, 2025).Hinweise, h => h.Contains("Zeilen 23–26"));
+    }
 }

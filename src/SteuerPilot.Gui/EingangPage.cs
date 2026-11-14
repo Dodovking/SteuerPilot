@@ -26,7 +26,13 @@ public sealed class EingangPage : Page
         var split = new SplitContainer { Dock = DockStyle.Fill, SplitterWidth = Ui.S(8), FixedPanel = FixedPanel.Panel1 };
         split.Panel1.Controls.Add(_liste);
         split.Panel2.Controls.Add(_vorschau);
-        split.HandleCreated += (_, _) => split.SplitterDistance = Ui.S(380);
+        void Teilen()
+        {
+            if (split.Width > Ui.S(600) && split.SplitterDistance != Ui.S(380)) split.SplitterDistance = Ui.S(380);
+        }
+        split.HandleCreated += (_, _) => Teilen();
+        split.SizeChanged += (_, _) => Teilen();
+        VisibleChanged += (_, _) => { if (Visible && split.IsHandleCreated) split.BeginInvoke(Teilen); };
         Controls.Add(split);
         Controls.Add(infoPanel);
         Controls.Add(top);

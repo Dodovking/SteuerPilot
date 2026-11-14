@@ -10,16 +10,20 @@ public static class Scanner
     {
         var type = Type.GetTypeFromProgID("WIA.CommonDialog")
                    ?? throw new InvalidOperationException("Die Windows-Bilderfassung (WIA) ist auf diesem PC nicht verfügbar.");
-        dynamic dialog = Activator.CreateInstance(type)!;
         dynamic? image;
         try
         {
+            dynamic dialog = Activator.CreateInstance(type)!;
             // 1 = ScannerDeviceType, 1 = ColorIntent, 131072 = MinimizeSize
             image = dialog.ShowAcquireImage(1, 1, 131072, FormatJpeg, false, true, false);
         }
         catch (System.Runtime.InteropServices.COMException ex) when ((uint)ex.HResult == 0x80210015)
         {
             throw new InvalidOperationException("Es wurde kein Scanner gefunden. Ist er eingeschaltet und per USB/WLAN verbunden?");
+        }
+        catch (System.Runtime.InteropServices.COMException ex) when ((uint)ex.HResult == 0x80070422)
+        {
+            throw new InvalidOperationException("Der Windows-Dienst „Windows-Bilderfassung (WIA)“ ist deaktiviert. Bitte unter „Dienste“ (services.msc) auf „Automatisch“ stellen und starten.");
         }
         if (image == null) return false;
         if (File.Exists(ziel)) File.Delete(ziel);

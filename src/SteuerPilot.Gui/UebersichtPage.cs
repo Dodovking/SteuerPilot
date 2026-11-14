@@ -4,7 +4,7 @@ namespace SteuerPilot.Gui;
 
 public sealed class UebersichtPage : Page
 {
-    private readonly FlowLayoutPanel _kacheln = new() { Dock = DockStyle.Top, Height = Ui.S(130), WrapContents = true };
+    private readonly FlowLayoutPanel _kacheln = new() { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, Padding = new Padding(0, 0, 0, Ui.S(12)) };
     private readonly Kachel _belege = new("Belege im Steuerjahr");
     private readonly Kachel _wk = new("Werbungskosten (Job)");
     private readonly Kachel _ergebnis = new("Geschätztes Ergebnis");

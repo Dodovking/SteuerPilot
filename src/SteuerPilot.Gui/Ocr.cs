@@ -62,7 +62,21 @@ public static class Ocr
         using var bmp = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied, transform,
             ExifOrientationMode.RespectExifOrientation, ColorManagementMode.DoNotColorManage);
         var result = await engine.RecognizeAsync(bmp);
-        return string.Join("\n", result.Lines.Select(l => l.Text));
+        return Zeilen(result);
+    }
+
+    /// <summary>Setzt Wörter mit gleicher Höhe zu einer Zeile zusammen. Die OCR liefert Spalten (z. B. „SUMME EUR“ und „19,48“) oft als getrennte Zeilen.</summary>
+    private static string Zeilen(OcrResult result)
+    {
+        static double Mitte(OcrWord w) => w.BoundingRect.Y + w.BoundingRect.Height / 2;
+        var zeilen = new List<List<OcrWord>>();
+        foreach (var w in result.Lines.SelectMany(l => l.Words).OrderBy(Mitte))
+        {
+            var z = zeilen.LastOrDefault();
+            if (z != null && Math.Abs(Mitte(w) - z.Average(Mitte)) < z.Average(x => x.BoundingRect.Height) * 0.6) z.Add(w);
+            else zeilen.Add([w]);
+        }
+        return string.Join("\n", zeilen.Select(z => string.Join(" ", z.OrderBy(x => x.BoundingRect.X).Select(x => x.Text))));
     }
 
     /// <summary>Rendert die erste PDF-Seite als Bild für die Vorschau.</summary>

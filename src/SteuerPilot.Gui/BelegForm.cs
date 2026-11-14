@@ -112,6 +112,7 @@ public sealed class BelegForm : DialogBase
         _betrag.Box.TextChanged += (_, _) => AfaInfo();
         _datum.ValueChanged += (_, _) => AfaInfo();
         _dateien.SelectedIndexChanged += (_, _) => _vorschau.Zeigen((_dateien.SelectedItem as Eintrag)?.Abs);
+        _vorschau.Zeigen((_dateien.SelectedItem as Eintrag)?.Abs);
         _dateien.DoubleClick += (_, _) => _vorschau.Oeffnen();
         plus.Click += (_, _) => { foreach (var f in Aktionen.DateienWaehlen(this)) DateiDazu(f); };
         scan.Click += (_, _) => { var p = Aktionen.Scannen(this, _app); if (p != null) { DateiDazu(p); _ = Erkennen(); } };
