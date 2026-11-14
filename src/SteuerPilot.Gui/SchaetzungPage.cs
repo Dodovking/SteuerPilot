@@ -4,7 +4,7 @@ namespace SteuerPilot.Gui;
 
 public sealed class SchaetzungPage : Page
 {
-    private readonly FlowLayoutPanel _kacheln = new() { Dock = DockStyle.Top, Height = Ui.S(130) };
+    private readonly FlowLayoutPanel _kacheln = new() { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, Padding = new Padding(0, 0, 0, Ui.S(12)) };
     private readonly Kachel _zve = new("Zu versteuerndes Einkommen");
     private readonly Kachel _steuer = new("Festzusetzende Steuer");
     private readonly Kachel _gezahlt = new("Bereits gezahlt (Lohnsteuer …)");
