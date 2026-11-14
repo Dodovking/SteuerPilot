@@ -16,6 +16,7 @@ public sealed class AngabenPage : Page
     {
         Controls.Add(_f);
         _save.Tick += (_, _) => { _save.Stop(); App.Speichern(); };
+        App.Changed += () => { if (!Visible) _geladen = default; };
         VisibleChanged += (_, _) => { if (!Visible && _save.Enabled) { _save.Stop(); App.Speichern(); } };
     }
 

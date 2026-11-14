@@ -237,7 +237,9 @@ public static partial class Erkennung
             // Nebeneinanderliegende Bons landen in einer Zeile: jede Endsumme einzeln nehmen.
             if (line.Contains("zwischensumme") || line.Contains("teilsumme")) continue;
             var starts = Endsummen.SelectMany(w => AlleStellen(line, w)).OrderBy(i => i).ToList();
-            starts = starts.Where((p, i) => i == 0 || p - starts[i - 1] > 12).ToList();
+            var behalten = new List<int>();
+            foreach (var p in starts) if (behalten.Count == 0 || p - behalten[^1] > 10) behalten.Add(p);
+            starts = behalten;
             for (int i = 0; i < starts.Count; i++)
             {
                 var stueck = line[starts[i]..(i + 1 < starts.Count ? starts[i + 1] : line.Length)];

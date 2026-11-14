@@ -141,7 +141,7 @@ public static class Kategorien
         new("minijob-haushalt", "Minijob im Haushalt (Haushaltsscheck)", Gruppe.Haushaltsnah, Wirkung.Minijob, "Hauptvordruck – Steuerermäßigungen", "20 %, max. 510 € Steuer.", ["haushaltsscheck", "minijob-zentrale"]),
 
         // Selbstständig / Nebenjob (EÜR)
-        new("betriebseinnahmen", "Betriebseinnahmen (Rechnungen an Kunden)", Gruppe.Selbststaendig, Wirkung.BetriebEinnahme, "Anlage EÜR / G / S", "Einnahmen aus Nebengewerbe oder Selbstständigkeit.", ["rechnung nr", "ihre zahlung"]),
+        new("betriebseinnahmen", "Betriebseinnahmen (Rechnungen an Kunden)", Gruppe.Selbststaendig, Wirkung.BetriebEinnahme, "Anlage EÜR / G / S", "Einnahmen aus Nebengewerbe oder Selbstständigkeit.", ["honorarrechnung", "ihre zahlung"]),
         new("betriebsausgaben", "Betriebsausgaben", Gruppe.Selbststaendig, Wirkung.BetriebAusgabe, "Anlage EÜR",
             "Über 800 € netto wird abgeschrieben – Nutzungsdauer angeben.", ["wareneinkauf", "büromaterial", "porto", "werbung", "domain", "hosting"]),
         new("betrieb-fahrzeug", "Fahrzeugkosten (betrieblich)", Gruppe.Selbststaendig, Wirkung.BetriebAusgabe, "Anlage EÜR", "", ["werkstatt", "kfz-steuer", "tüv", "dekra"]),

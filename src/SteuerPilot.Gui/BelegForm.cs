@@ -123,19 +123,10 @@ public sealed class BelegForm : DialogBase
         decimal[] start = [kw.Ertraege, kw.AktienGewinne, kw.Kapest, kw.Soli, kw.Kist, kw.VerlustAktien, kw.VerlustSonstige];
         _kap = start.Select(x => Felder.Text(120, x == 0 ? "" : x.ToString("0.00", Fmt.De), rechts: true)).ToArray();
         string[] namen = ["Kapitalerträge €", "davon Aktiengewinne €", "Kapitalertragsteuer €", "Soli €", "Kirchensteuer €", "Verluste Aktien €", "Verluste sonstige €"];
-        for (int i = 0; i < _kap.Length; i += 2)
+        for (int i = 0; i < _kap.Length; i++)
         {
-            static Panel Fest(string t, int breite)
-            {
-                var l = Make.Label(t);
-                var p = new Panel { Size = new Size(Ui.S(breite), l.PreferredHeight) };
-                p.Controls.Add(l);
-                return p;
-            }
-            var parts = new List<object> { Fest(namen[i], 170), _kap[i] };
-            if (i + 1 < _kap.Length) parts.AddRange([Fest("   " + namen[i + 1], 190), _kap[i + 1]]);
             int vor = Body.Controls.Count;
-            AddLine(parts.ToArray());
+            AddLine(_kap[i], namen[i]);
             _kapControls.AddRange(Body.Controls.Cast<Control>().Skip(vor));
         }
         FinishLayout();

@@ -20,7 +20,7 @@ public sealed class UebersichtPage : Page
         _kacheln.Controls.AddRange([_belege, _wk, _ergebnis, _eingang]);
         var titel = Make.Label("Bereiche – Klick öffnet die Belege", Ui.Section);
         titel.Dock = DockStyle.Top;
-        _bereiche.Columns.AddRange(Spalte("Bereich", 220), Spalte("Belege", 60, true), Spalte("Steuerlich angesetzt", 110, true), Spalte("Ordner", 150));
+        _bereiche.Columns.AddRange(Spalte("Bereich", 220), Spalte("Belege", 60, true), Spalte("Steuerlich angesetzt", 170, true), Spalte("Ordner", 150));
         _bereiche.CellDoubleClick += (_, e) =>
         {
             if (e.RowIndex >= 0 && _bereiche.Rows[e.RowIndex].Tag is Gruppe g) Main.Show<BelegePage>().FilterAuf(g);

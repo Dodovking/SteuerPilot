@@ -163,3 +163,17 @@ public class MehrereBonsTests
     [Fact]
     public void Kilometer() => Assert.Equal(156, Erkennung.Kilometer("Kilometer 3 x 52 Km = 156 Km Fahrten zum Steuerbüro"));
 }
+
+public class OcrZeileTests
+{
+    [Fact]
+    public void BonsOhneEurozeichenInEinerZeile()
+    {
+        var v = Erkennung.Auswerten("08.11.23 11.05.23 19.04.2023\nGesamt brutto 3,00 Gesamt brutto 4,00 Bruttoumsatz 8,50 EUR", new DateTime(2024, 1, 1));
+        Assert.Equal(15.50m, v.Betrag);
+    }
+
+    [Fact]
+    public void MalerRechnungIstHandwerker() =>
+        Assert.Equal("handwerker", Erkennung.Kategorie("Maler Müller\nRechnung Nr. 123\nRechnungsbetrag 450,00"));
+}
