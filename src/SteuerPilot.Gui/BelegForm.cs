@@ -123,7 +123,7 @@ public sealed class BelegForm : DialogBase
         _dateien.SelectedIndexChanged += (_, _) => _vorschau.Zeigen((_dateien.SelectedItem as Eintrag)?.Abs);
         _vorschau.Zeigen((_dateien.SelectedItem as Eintrag)?.Abs);
         _dateien.DoubleClick += (_, _) => _vorschau.Oeffnen();
-        plus.Click += (_, _) => { foreach (var f in Aktionen.DateienWaehlen(this)) DateiDazu(f); };
+        plus.Click += (_, _) => { var fs = Aktionen.DateienWaehlen(this); foreach (var f in fs) DateiDazu(f); if (fs.Length > 0) _ = Erkennen(); };
         scan.Click += (_, _) => { var p = Aktionen.Scannen(this, _app); if (p != null) { DateiDazu(p); _ = Erkennen(); } };
         weg.Click += (_, _) => DateiWeg();
         oeffnen.Click += (_, _) => _vorschau.Oeffnen();
@@ -131,7 +131,7 @@ public sealed class BelegForm : DialogBase
         OkButton.Click += (_, _) => Uebernehmen();
         AllowDrop = true;
         DragEnter += (_, e) => e.Effect = e.Data?.GetDataPresent(DataFormats.FileDrop) == true ? DragDropEffects.Copy : DragDropEffects.None;
-        DragDrop += (_, e) => { if (e.Data?.GetData(DataFormats.FileDrop) is string[] fs) foreach (var f in fs.Where(Ablage.Unterstuetzt)) DateiDazu(f); };
+        DragDrop += (_, e) => { if (e.Data?.GetData(DataFormats.FileDrop) is string[] fs) { var neue = fs.Where(Ablage.Unterstuetzt).ToList(); foreach (var f in neue) DateiDazu(f); if (neue.Count > 0) _ = Erkennen(); } };
 
         _benutzerKategorie = !neu;
         KategorieGeaendert();
@@ -197,8 +197,11 @@ public sealed class BelegForm : DialogBase
         _ocrInfo.Text = "Erkenne Text …";
         try
         {
-            var text = await Ocr.TextAus(e.Abs);
-            var v = Erkennung.Auswerten(text);
+            var erg = await Belegerkennung.Erkennen(e.Abs);
+            if (IsDisposed) return;
+            if (erg.Fehler != null) throw new InvalidOperationException(erg.Fehler);
+            var text = erg.Text;
+            var v = erg.Vorschlag;
             var teile = new List<string>();
             if (v.Betrag is decimal betrag && (überschreiben || string.IsNullOrWhiteSpace(_betrag.Text)))
             {

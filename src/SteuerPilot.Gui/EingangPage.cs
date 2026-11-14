@@ -10,6 +10,7 @@ public sealed class EingangPage : Page
     private readonly FlatButton _erfassen = new("Als Beleg erfassen", ButtonKind.Primary);
     private readonly FlatButton _zusammen = new("Zusammen als 1 Beleg");
     private readonly FlatButton _loeschen = new("Löschen", ButtonKind.Danger);
+    private readonly FlatButton _auto = new("Alle automatisch einsortieren");
     private List<string> _dateien = [];
 
     public override string Titel => "Eingang";
@@ -18,8 +19,8 @@ public sealed class EingangPage : Page
     {
         var scan = new FlatButton("Scannen");
         var import = new FlatButton("Dateien hinzufügen");
-        var ordner = new FlatButton("Eingang-Ordner öffnen", ButtonKind.Ghost);
-        var top = Leiste(_erfassen, _zusammen, scan, import, ordner, _loeschen);
+        var ordner = new FlatButton("Ordner öffnen", ButtonKind.Ghost);
+        var top = Leiste(_erfassen, _auto, _zusammen, scan, import, ordner, _loeschen);
         var infoPanel = new Panel { Dock = DockStyle.Top, Height = Ui.S(30) };
         infoPanel.Controls.Add(_info);
 
@@ -47,10 +48,10 @@ public sealed class EingangPage : Page
             var icon = f.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) ? "PDF" : "BILD";
             var r = new Rectangle(e.Bounds.X + Ui.S(8), e.Bounds.Y, Ui.S(40), e.Bounds.Height);
             TextRenderer.DrawText(e.Graphics, icon, Ui.Small, r, Theme.P.Muted, TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
-            var r2 = new Rectangle(r.Right, e.Bounds.Y, e.Bounds.Width - r.Right - Ui.S(90), e.Bounds.Height);
+            var r2 = new Rectangle(r.Right, e.Bounds.Y, e.Bounds.Width - r.Right - Ui.S(150), e.Bounds.Height);
             TextRenderer.DrawText(e.Graphics, Path.GetFileName(f), Ui.Base, r2, Theme.P.Text, TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
-            var t = File.Exists(f) ? File.GetLastWriteTime(f).ToString("dd.MM. HH:mm") : "";
-            var r3 = new Rectangle(e.Bounds.Right - Ui.S(88), e.Bounds.Y, Ui.S(82), e.Bounds.Height);
+            var t = Kurz(Belegerkennung.Fertig(f));
+            var r3 = new Rectangle(e.Bounds.Right - Ui.S(148), e.Bounds.Y, Ui.S(142), e.Bounds.Height);
             TextRenderer.DrawText(e.Graphics, t, Ui.Small, r3, Theme.P.Muted, TextFormatFlags.VerticalCenter | TextFormatFlags.Right);
         };
         _liste.SelectedIndexChanged += (_, _) => Auswahl();
@@ -59,6 +60,7 @@ public sealed class EingangPage : Page
         _erfassen.Click += (_, _) => Erfassen(false);
         _zusammen.Click += (_, _) => Erfassen(true);
         _loeschen.Click += (_, _) => Loeschen();
+        _auto.Click += async (_, _) => await AutomatischEinsortieren();
         scan.Click += (_, _) =>
         {
             var p = Aktionen.Scannen(Main, App);
@@ -74,6 +76,88 @@ public sealed class EingangPage : Page
         ordner.Click += (_, _) => Ui.OpenInExplorer(App.Ablage.Eingang);
     }
 
+    private static string Kurz(Belegerkennung.Ergebnis? e)
+    {
+        if (e == null) return "erkenne …";
+        if (e.Fehler != null) return "keine Texterkennung";
+        var v = e.Vorschlag;
+        var teile = new List<string>();
+        if (v.Betrag is decimal b) teile.Add(Fmt.Euro(b));
+        if (v.Datum is DateTime d) teile.Add(d.ToString("dd.MM.yy"));
+        return teile.Count == 0 ? "nichts erkannt" : string.Join(" · ", teile);
+    }
+
+    private int _lauf;
+
+    /// <summary>Liest im Hintergrund alle Dateien im Eingang und zeigt Betrag/Datum direkt in der Liste.</summary>
+    private async void HintergrundErkennen()
+    {
+        int lauf = ++_lauf;
+        foreach (var f in _dateien.ToList())
+        {
+            if (lauf != _lauf || IsDisposed) return;
+            if (!File.Exists(f) || Belegerkennung.Fertig(f) != null) continue;
+            await Belegerkennung.Erkennen(f);
+            if (IsDisposed) return;
+            _liste.Invalidate();
+            if (Belegerkennung.Fertig(f)?.Fehler is string fehler && lauf == _lauf)
+            {
+                _info.Text = "Texterkennung nicht möglich: " + fehler;
+                return;
+            }
+        }
+    }
+
+    private async Task AutomatischEinsortieren()
+    {
+        var dateien = Ausgewaehlt().Count > 1 ? Ausgewaehlt() : _dateien.ToList();
+        if (dateien.Count == 0) return;
+        _auto.Enabled = false;
+        _vorschau.Zeigen(null);
+        int ok = 0;
+        var offen = new List<string>();
+        try
+        {
+            foreach (var f in dateien)
+            {
+                if (!File.Exists(f)) continue;
+                _info.Text = $"Erkenne {Path.GetFileName(f)} …";
+                var e = await Belegerkennung.Erkennen(f);
+                if (e.Fehler != null) { offen.Add(Path.GetFileName(f)); continue; }
+                var v = e.Vorschlag;
+                if (!e.Vollstaendig) { offen.Add(Path.GetFileName(f)); continue; }
+                var k = Kategorien.Get(v.Kategorie);
+                var b = new Beleg
+                {
+                    Datum = v.Datum!.Value.Date,
+                    Betrag = v.Betrag!.Value,
+                    Kategorie = k.Key,
+                    Beschreibung = string.IsNullOrWhiteSpace(v.Beschreibung) ? k.Name : v.Beschreibung!,
+                    Notiz = "Automatisch erkannt – bitte prüfen.",
+                };
+                try
+                {
+                    App.Ablage.Hinzufuegen(b, [f], App.Settings.DateienVerschieben);
+                    App.Daten.Belege.Add(b);
+                    ok++;
+                }
+                catch (Exception ex) { Aktionen.Fehler(Main, $"„{Path.GetFileName(f)}“ konnte nicht einsortiert werden:", ex); }
+            }
+        }
+        finally
+        {
+            if (ok > 0) App.Speichern();
+            _auto.Enabled = true;
+            Main.UpdateEingangBadge();
+            Aktualisieren();
+        }
+        var msg = $"{ok} Beleg(e) automatisch erkannt und einsortiert (Datum, Betrag, Kategorie). Du findest sie unter „Belege“ mit dem Vermerk „Automatisch erkannt – bitte prüfen“.";
+        if (offen.Count > 0)
+            msg += $"\n\n{offen.Count} Datei(en) bleiben im Eingang, weil Betrag oder Datum nicht sicher erkannt wurden – bitte mit „Als Beleg erfassen“ von Hand ergänzen:\n" +
+                   string.Join("\n", offen.Take(10).Select(n => "• " + n)) + (offen.Count > 10 ? "\n…" : "");
+        MessageBox.Show(Main, msg, "Automatisch einsortieren", MessageBoxButtons.OK, offen.Count > 0 && ok == 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
+    }
+
     private List<string> Ausgewaehlt() => _liste.SelectedIndices.Cast<int>().Where(i => i < _dateien.Count).Select(i => _dateien[i]).ToList();
 
     private void Auswahl()
@@ -83,6 +167,9 @@ public sealed class EingangPage : Page
         _erfassen.Text = a.Count > 1 ? $"{a.Count} einzeln erfassen" : "Als Beleg erfassen";
         _erfassen.FitWidth();
         _zusammen.Enabled = a.Count > 1;
+        _auto.Enabled = _dateien.Count > 0;
+        _auto.Text = a.Count > 1 ? $"{a.Count} automatisch einsortieren" : "Alle automatisch einsortieren";
+        _auto.FitWidth();
         _loeschen.Enabled = a.Count > 0;
         _vorschau.Zeigen(a.FirstOrDefault());
         ((Control)_erfassen.Parent!)?.PerformLayout();
@@ -133,5 +220,6 @@ public sealed class EingangPage : Page
         if (_liste.SelectedIndices.Count == 0 && _dateien.Count > 0) _liste.SelectedIndex = 0;
         Auswahl();
         _liste.BackColor = Theme.P.Surface;
+        HintergrundErkennen();
     }
 }
