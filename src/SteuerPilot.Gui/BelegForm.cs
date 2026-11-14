@@ -164,7 +164,7 @@ public sealed class BelegForm : DialogBase
         var netto = betrag / 1.19m;
         if (_afa.Value <= 1)
             _afaInfo.Text = netto > 800 && _afa.Value == 0
-                ? "  Tipp: über 800 € netto → über Nutzungsdauer abschreiben (Computer: 1 Jahr)"
+                ? "  Tipp: ab 800 € netto abschreiben"
                 : "  0/1 = sofort komplett im Kaufjahr";
         else
             _afaInfo.Text = $"  → {Fmt.Euro(Steuer.Abschreibung(betrag * _anteil.Value / 100m, _datum.Value, _afa.Value, _datum.Value.Year))} im Kaufjahr";

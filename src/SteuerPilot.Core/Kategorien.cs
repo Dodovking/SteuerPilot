@@ -131,7 +131,7 @@ public static class Kategorien
         new("betriebseinnahmen", "Betriebseinnahmen (Rechnungen an Kunden)", Gruppe.Selbststaendig, Wirkung.BetriebEinnahme, "Anlage EÜR / G / S", "Einnahmen aus Nebengewerbe oder Selbstständigkeit.", ["rechnung nr", "ihre zahlung"]),
         new("betriebsausgaben", "Betriebsausgaben", Gruppe.Selbststaendig, Wirkung.BetriebAusgabe, "Anlage EÜR",
             "Über 800 € netto wird abgeschrieben – Nutzungsdauer angeben.", ["wareneinkauf", "büromaterial", "porto", "werbung", "domain", "hosting"]),
-        new("betrieb-fahrzeug", "Fahrzeugkosten (betrieblich)", Gruppe.Selbststaendig, Wirkung.BetriebAusgabe, "Anlage EÜR", "", ["tankstelle", "aral", "shell", "esso", "werkstatt", "kfz-steuer", "tüv", "dekra"]),
+        new("betrieb-fahrzeug", "Fahrzeugkosten (betrieblich)", Gruppe.Selbststaendig, Wirkung.BetriebAusgabe, "Anlage EÜR", "", ["werkstatt", "kfz-steuer", "tüv", "dekra"]),
 
         // Vermietung (Anlage V)
         new("mieteinnahmen", "Mieteinnahmen (Kaltmiete)", Gruppe.Vermietung, Wirkung.MietEinnahme, "Anlage V, Zeile 9", "Alle im Jahr zugeflossenen Mieten, auch Nachzahlungen. Bei Miete unter 50 % der ortsüblichen Miete sind Kosten nur anteilig absetzbar (unter 66 % Prognose nötig).", ["mieteingang", "kaltmiete", "mietzahlung"]),

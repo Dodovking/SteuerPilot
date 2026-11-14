@@ -23,7 +23,7 @@ public static class Felder
             e.Graphics.FillRectangle(back, e.Bounds);
             if (e.Index >= 0)
                 TextRenderer.DrawText(e.Graphics, c.GetItemText(c.Items[e.Index]), c.Font, e.Bounds, c.ForeColor,
-                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
         };
         c.Items.AddRange(items);
         if (c.Items.Count > 0) c.SelectedIndex = 0;

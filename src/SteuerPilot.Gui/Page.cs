@@ -22,8 +22,9 @@ public abstract class Page : Panel
         var p = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = Ui.S(46),
-            WrapContents = false,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = true,
             FlowDirection = FlowDirection.LeftToRight,
             Padding = new Padding(0),
         };

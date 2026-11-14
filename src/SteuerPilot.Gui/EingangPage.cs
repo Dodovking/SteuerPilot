@@ -49,7 +49,7 @@ public sealed class EingangPage : Page
             var r = new Rectangle(e.Bounds.X + Ui.S(8), e.Bounds.Y, Ui.S(40), e.Bounds.Height);
             TextRenderer.DrawText(e.Graphics, icon, Ui.Small, r, Theme.P.Muted, TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
             var r2 = new Rectangle(r.Right, e.Bounds.Y, e.Bounds.Width - r.Right - Ui.S(150), e.Bounds.Height);
-            TextRenderer.DrawText(e.Graphics, Path.GetFileName(f), Ui.Base, r2, Theme.P.Text, TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            TextRenderer.DrawText(e.Graphics, Path.GetFileName(f), Ui.Base, r2, Theme.P.Text, TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
             var t = Kurz(Belegerkennung.Fertig(f));
             var r3 = new Rectangle(e.Bounds.Right - Ui.S(148), e.Bounds.Y, Ui.S(142), e.Bounds.Height);
             TextRenderer.DrawText(e.Graphics, t, Ui.Small, r3, Theme.P.Muted, TextFormatFlags.VerticalCenter | TextFormatFlags.Right);

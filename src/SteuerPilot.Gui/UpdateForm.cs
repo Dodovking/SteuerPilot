@@ -80,6 +80,7 @@ public sealed class UpdateForm : DialogBase
         }
         OkButton.Enabled = true;
         OkButton.Focus();
+        _ = InstallAsync();
     }
 
     private void Finish(string heading, string text)
